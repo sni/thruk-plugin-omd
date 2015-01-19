@@ -8,7 +8,7 @@ performance problems on your monitoring host.
 All steps have to be done as site user
 
     %> cd etc/thruk/plugins-enabled/
-    %> git clone git@github.com:sni/thruk-plugin-omd.git omd
+    %> git clone https://github.com/sni/thruk-plugin-omd.git omd
     %> ln -sfn ~/etc/thruk/plugins-enabled/omd/cron ~/etc/cron.d/save_top_data
     %> omd reload crontab
     %> omd reload apache
