@@ -236,7 +236,7 @@ sub _extract_top_data {
     }
 
     my $pattern = [];
-    if($c->config->{'omd_top'}) {
+    if($c && $c->config->{'omd_top'}) {
         for my $regex (@{$c->config->{'omd_top'}}) {
             my($k,$p) = split(/\s*=\s*/mx, $regex, 2);
             $p =~ s/^\s*//mx;
@@ -270,6 +270,7 @@ sub _extract_top_data {
         elsif($line =~ m/^Tasks:\s*(\d+)\s*total,/mxo) {
             $cur->{'num'} = $1;
         }
+        # CPU %
         elsif($line =~ m/^%?Cpu\(s\):\s*([\.\d]+)[%\s]*us,\s*([\.\d]+)[%\s]*sy,\s*([\.\d]+)[%\s]*ni,\s*([\.\d]+)[%\s]*id,\s*([\.\d]+)[%\s]*wa,\s*([\.\d]+)[%\s]*hi,\s*([\.\d]+)[%\s]*si,\s*([\.\d]+)[%\s]*st/mxo) {
             $cur->{'cpu_us'} = $1;
             $cur->{'cpu_sy'} = $2;
@@ -277,25 +278,27 @@ sub _extract_top_data {
             $cur->{'cpu_id'} = $4;
             $cur->{'cpu_wa'} = $5;
             $cur->{'cpu_hi'} = $6;
-            $cur->{'cpu_si'} = $6;
-            $cur->{'cpu_st'} = $7;
+            $cur->{'cpu_si'} = $7;
+            $cur->{'cpu_st'} = $8;
         }
+        # Memory
         elsif($line =~ m/^(KiB|)\s*Mem:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*buffers/mxo) {
             my $factor = $1 eq 'KiB' ? 1024 : 1;
-            $cur->{'mem'}      = _normalize_mem($factor * $2, $line);
-            $cur->{'mem_used'} = _normalize_mem($factor * $3, $line);
-            $cur->{'buffers'}  = _normalize_mem($factor * $5, $line);
+            $cur->{'mem'}      = _normalize_mem($2, $line, $factor);
+            $cur->{'mem_used'} = _normalize_mem($3, $line, $factor);
+            $cur->{'buffers'}  = _normalize_mem($5, $line, $factor);
         }
-        elsif($line =~ m/(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*cached/mxo) {
+        # Swap / Cached
+        elsif($line =~ m/(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free(,|\.)\s*([\.\w]+)\s*cached/mxo) {
             my $factor = $1 eq 'KiB' ? 1024 : 1;
-            $cur->{'swap'}      = _normalize_mem($factor * $2, $line);
-            $cur->{'swap_used'} = _normalize_mem($factor * $3, $line);
-            $cur->{'cached'}    = _normalize_mem($factor * $5, $line);
+            $cur->{'swap'}      = _normalize_mem($2, $line, $factor);
+            $cur->{'swap_used'} = _normalize_mem($3, $line, $factor);
+            $cur->{'cached'}    = _normalize_mem($6, $line, $factor);
         }
         elsif($proc_started) {
             my($pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd) = split(/\s+/mx, $line, 12);
             next unless $cmd;
-            push @{$cur->{'raw'}}, [$pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd];
+            push @{$cur->{'raw'}}, [$pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd] if $with_raw;
             my $key = 'other';
             for my $p (@{$pattern}) {
                 if($cmd =~ m|$p->[0]|mx) {
@@ -320,7 +323,8 @@ sub _extract_top_data {
 ##########################################################
 # returns memory in megabyte
 sub _normalize_mem {
-    my($value, $line) = @_;
+    my($value, $line, $factor) = @_;
+    $factor = 1 unless $factor;
 
     if($value =~ m/^([\d\.]+)([a-z])$/) {
         $value = $1;
@@ -334,6 +338,7 @@ sub _normalize_mem {
     if($value !~ m/^[\d\.]*$/mx) {
         die("could not parse top data ($value) in line: $line\n");
     }
+    $value = $value * $factor;
     return(int($value/1024/1024));
 }
 
