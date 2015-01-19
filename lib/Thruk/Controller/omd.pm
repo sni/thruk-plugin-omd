@@ -142,13 +142,13 @@ sub top_graph_details {
         { label => "cached",        data =>  [] },
     ];
     my $cpu_series = [
-        { label => "user",      data =>  [], stack => 1 },
-        { label => "system",    data =>  [], stack => 1 },
-        { label => "nice",      data =>  [], stack => 1 },
-        { label => "wait",      data =>  [], stack => 1 },
-        #{ label => "high",      data =>  [], stack => 1 },
-        #{ label => "si",        data =>  [], stack => 1 },
-        #{ label => "st",        data =>  [], stack => 1 },
+        { label => "user",      data =>  [], stack => undef },
+        { label => "system",    data =>  [], stack => undef },
+        { label => "nice",      data =>  [], stack => undef },
+        { label => "wait",      data =>  [], stack => undef },
+        #{ label => "high",      data =>  [], stack => undef },
+        #{ label => "si",        data =>  [], stack => undef },
+        #{ label => "st",        data =>  [], stack => undef },
     ];
     my $load_series = [
         { label => "load 1",  data =>  [] },

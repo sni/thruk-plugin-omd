@@ -45,7 +45,7 @@
 
 <div id='tooltip'></div>
 <div id="load_graph" style="height: 200px; width: 1000px;"></div>
-<div style="text-align: center;">select a range to display details</div>
+<div style="text-align: center; width: 1000px; margin-top: 15px;">select a range to display details</div>
 
 <script type="text/javascript">
 <!--

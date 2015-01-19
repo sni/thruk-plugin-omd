@@ -70,12 +70,12 @@
   <tr>
     <td valign=top>
       <div id='tooltip'></div>
-      <div id="load_graph" style="height: 180px; width: 1000px;"></div>
-      <div id="cpu_graph"  style="height: 180px; width: 1000px;"></div>
-      <div id="mem_graph"  style="height: 180px; width: 1000px;"></div>
-      <div id="swap_graph" style="height: 180px; width: 1000px;"></div>
-      <div id="pcpu_graph" style="height: 260px; width: 1000px;"></div>
-      <div id="pmem_graph" style="height: 260px; width: 1000px;"></div>
+      <div id="load_graph" style="height: 180px; width: 800px;"></div>
+      <div id="cpu_graph"  style="height: 180px; width: 800px;"></div>
+      <div id="mem_graph"  style="height: 180px; width: 800px;"></div>
+      <div id="swap_graph" style="height: 180px; width: 800px;"></div>
+      <div id="pcpu_graph" style="height: 260px; width: 800px;"></div>
+      <div id="pmem_graph" style="height: 260px; width: 800px;"></div>
     </td>
     <td valign=top style="padding-left: 20px; padding-top: 20px;">
       <table border=1 cellpadding=0 cellpadding=2 style="display: none;" id="detailstable">
@@ -215,7 +215,7 @@ jQuery().ready(function() {
         xaxis: standard_xaxis,
         yaxes: [{
                    min: 0,
-                   max: 100,
+                   //max: 100,
                    tickFormatter: function(val, axis) { return(val < axis.max ? val : "%"); },
                    labelWidth: labelWidth
         }],
