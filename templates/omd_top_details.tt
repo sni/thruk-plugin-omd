@@ -5,7 +5,8 @@
                       "plugins/omd/jquery.flot.stack.js",
                       "plugins/omd/jquery.flot.crosshair.js",
                       "plugins/omd/jquery.tablesorter.min.js",
-                    ]
+                    ],
+    css          => [ "plugins/omd/style.css", ],
 %]
 [% PROCESS _message.tt %]
 [% USE date %]
@@ -32,52 +33,18 @@
   </tr>
 </table>
 
-<style type="text/css">
-#tooltip {
-  position: absolute;
-  display: none;
-  border: 1px solid #fdd;
-  padding: 2px;
-  background-color: #fee;
-  opacity: 0.80;
-  z-index: 100;
-}
-
-#detailstable {
-  border-collapse: collapse;
-}
-
-#detailstable TD, #detailstable TH {
-  border: 1px solid grey;
-  padding: 2px;
-}
-#raw_top TD {
-  white-space: nowrap;
-  text-align: center;
-}
-#raw_top TH {
-  cursor: pointer;
-}
-#raw_top TH:nth-child(12), #raw_top TD:nth-child(12) {
-  text-align: left;
-}
-#raw_top TD:nth-child(1) {
-  text-align: right;
-}
-</style>
-
 <table border=0 cellpadding=0 cellspacing=0>
   <tr>
     <td valign=top>
       <div id='tooltip'></div>
-      <div id="load_graph" style="height: 180px; width: 800px;"></div>
-      <div id="cpu_graph"  style="height: 180px; width: 800px;"></div>
-      <div id="mem_graph"  style="height: 180px; width: 800px;"></div>
-      <div id="swap_graph" style="height: 180px; width: 800px;"></div>
-      <div id="pcpu_graph" style="height: 260px; width: 800px;"></div>
-      <div id="pmem_graph" style="height: 260px; width: 800px;"></div>
+      <div id="load_graph" style="height: 180px; width: 750px;"></div>
+      <div id="cpu_graph"  style="height: 180px; width: 750px;"></div>
+      <div id="mem_graph"  style="height: 180px; width: 750px;"></div>
+      <div id="swap_graph" style="height: 180px; width: 750px;"></div>
+      <div id="pcpu_graph" style="height: 260px; width: 750px;"></div>
+      <div id="pmem_graph" style="height: 260px; width: 750px;"></div>
     </td>
-    <td valign=top style="padding-left: 20px; padding-top: 20px;">
+    <td valign=top style="padding-left: 5px; padding-top: 15px;">
       <table border=1 cellpadding=0 cellpadding=2 style="display: none;" id="detailstable">
         <tr>
           <th>Time</th>
@@ -91,6 +58,7 @@
           <td><span id="load5"></span></td>
           <th>15</th>
           <td><span id="load15"></span></td>
+          <td colspan=2>&nbsp;</td>
         </tr>
         <tr>
           <th>CPU</th>
@@ -120,12 +88,13 @@
           <td><span id="swap"></span></td>
           <th>Used</th>
           <td><span id="swap_used"></span></td>
+          <td colspan=4>&nbsp;</td>
         </tr>
       </table>
       <br>
-      <div id="raw_top_div" style="display: none;">
+      <div id="raw_top_div" style="display: none; margin-top: 5px;">
       [% PROCESS _table_search_field.tt ids=["raw_top"] %]
-      <table id="raw_top">
+      <table id="raw_top" class="tablesorter">
         <thead>
         <tr>
           <th>Pid</th>
@@ -163,7 +132,8 @@ jQuery().ready(function() {
     };
     var standard_grid = {
         hoverable: true,
-        clickable: true
+        clickable: true,
+        backgroundColor: "#F0F0ED"
     };
     standard_selection = {
         mode: "x"
