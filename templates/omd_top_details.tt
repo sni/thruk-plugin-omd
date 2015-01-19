@@ -1,0 +1,471 @@
+[% PROCESS _header.tt
+    js           => [ "plugins/reports2/flot-d7c58b5/jquery.flot.js",
+                      "plugins/reports2/flot-d7c58b5/jquery.flot.time.js",
+                      "plugins/omd/jquery.flot.selection.js",
+                      "plugins/omd/jquery.flot.stack.js",
+                      "plugins/omd/jquery.flot.crosshair.js",
+                      "plugins/omd/jquery.tablesorter.min.js",
+                    ]
+%]
+[% PROCESS _message.tt %]
+[% USE date %]
+
+<table border="0" width="100%" cellspacing="0" cellpadding="0">
+  <tr>
+    <td align="left" valign="top" width="20%">
+      <table border="1" cellpadding="0" cellspacing="0" class='linkBox'>
+        <tr>
+          <td class='linkBox'>
+            <a href='omd.cgi?action=top'>back to overview</a><br>
+          </td>
+        </tr>
+      </table>
+    </td>
+    <td align="center" valign="top" width="60%">
+      <div align="center" class='dataTitle'>
+        Top Reporting Overview
+      </div>
+    </td>
+    <td align="right" valign="bottom" width="20%">
+      [% PROCESS _help.tt topic = "omd" %]
+    </td>
+  </tr>
+</table>
+
+<style type="text/css">
+#tooltip {
+  position: absolute;
+  display: none;
+  border: 1px solid #fdd;
+  padding: 2px;
+  background-color: #fee;
+  opacity: 0.80;
+  z-index: 100;
+}
+
+#detailstable {
+  border-collapse: collapse;
+}
+
+#detailstable TD, #detailstable TH {
+  border: 1px solid grey;
+  padding: 2px;
+}
+#raw_top TD {
+  white-space: nowrap;
+  text-align: center;
+}
+#raw_top TH {
+  cursor: pointer;
+}
+#raw_top TH:nth-child(12), #raw_top TD:nth-child(12) {
+  text-align: left;
+}
+#raw_top TD:nth-child(1) {
+  text-align: right;
+}
+</style>
+
+<table border=0 cellpadding=0 cellspacing=0>
+  <tr>
+    <td valign=top>
+      <div id='tooltip'></div>
+      <div id="load_graph" style="height: 180px; width: 1000px;"></div>
+      <div id="cpu_graph"  style="height: 180px; width: 1000px;"></div>
+      <div id="mem_graph"  style="height: 180px; width: 1000px;"></div>
+      <div id="swap_graph" style="height: 180px; width: 1000px;"></div>
+      <div id="pcpu_graph" style="height: 260px; width: 1000px;"></div>
+      <div id="pmem_graph" style="height: 260px; width: 1000px;"></div>
+    </td>
+    <td valign=top style="padding-left: 20px; padding-top: 20px;">
+      <table border=1 cellpadding=0 cellpadding=2 style="display: none;" id="detailstable">
+        <tr>
+          <th>Time</th>
+          <td colspan=8><span id="time"></span></td>
+        </tr>
+        <tr>
+          <th>Load</th>
+          <th>1</th>
+          <td><span id="load1"></span></td>
+          <th>5</th>
+          <td><span id="load5"></span></td>
+          <th>15</th>
+          <td><span id="load15"></span></td>
+        </tr>
+        <tr>
+          <th>CPU</th>
+          <th>User</th>
+          <td><span id="cpu_us"></span></td>
+          <th>System</th>
+          <td><span id="cpu_sy"></span></td>
+          <th>Nice</th>
+          <td><span id="cpu_ni"></span></td>
+          <th>Wait</th>
+          <td><span id="cpu_wa"></span></td>
+        </tr>
+        <tr>
+          <th>Memory</th>
+          <th>Total</th>
+          <td><span id="mem"></span></td>
+          <th>Used</th>
+          <td><span id="mem_used"></span></td>
+          <th>Buffers</th>
+          <td><span id="buffers"></span></td>
+          <th>Cached</th>
+          <td><span id="cached"></span></td>
+        </tr>
+        <tr>
+          <th>Swap</th>
+          <th>Total</th>
+          <td><span id="swap"></span></td>
+          <th>Used</th>
+          <td><span id="swap_used"></span></td>
+        </tr>
+      </table>
+      <br>
+      <div id="raw_top_div" style="display: none;">
+      [% PROCESS _table_search_field.tt ids=["raw_top"] %]
+      <table id="raw_top">
+        <thead>
+        <tr>
+          <th>Pid</th>
+          <th>User</th>
+          <th>Pr</th>
+          <th>Ni</th>
+          <th>Virt</th>
+          <th>Res</th>
+          <th>Shr</th>
+          <th>S</th>
+          <th>%Cpu</th>
+          <th>%Mem</th>
+          <th>Time+</th>
+          <th width="100%">Command</th>
+        </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+      </div>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+<!--
+var plots = [];
+jQuery().ready(function() {
+    var labelWidth = 40;
+    standard_xaxis = { mode: "time",
+                  timezone: "browser",
+                  labelHeight: 0,
+                  labelWidth: 0,
+                  tickFormatter: function() { return(""); }
+    };
+    var standard_grid = {
+        hoverable: true,
+        clickable: true
+    };
+    standard_selection = {
+        mode: "x"
+    };
+    standard_legend = {
+        position: 'ne',
+        margin: [5, 5]
+    };
+    standard_crosshair = { mode: "x" };
+
+    /* memory graph */
+    var mem_options = {
+        xaxis: standard_xaxis,
+        yaxes: [{
+                   min: 0,
+                   tickFormatter: function(val, axis) { return(val < axis.max ? val : "MB"); },
+                   labelWidth: labelWidth
+        }],
+        crosshair: standard_crosshair,
+        grid:      standard_grid,
+        selection: standard_selection,
+        legend:    standard_legend
+    };
+    var mem_series = [% encode_json_obj(mem_series) %];
+    var mem_plot   = jQuery.plot('#mem_graph', mem_series, mem_options);
+    mem_plot.draw();
+    plots.push(mem_plot);
+
+    /* swap graph */
+    var swap_options = {
+        xaxis: standard_xaxis,
+        yaxes: [{
+                   min: 0,
+                   tickFormatter: function(val, axis) { return(val < axis.max ? val : "MB"); },
+                   labelWidth: labelWidth
+        }],
+        crosshair: standard_crosshair,
+        grid:      standard_grid,
+        selection: standard_selection,
+        legend:    standard_legend
+    };
+    var swap_series = [% encode_json_obj(swap_series) %];
+    var swap_plot   = jQuery.plot('#swap_graph', swap_series, swap_options);
+    swap_plot.draw();
+    plots.push(swap_plot);
+
+    /* cpu graph */
+    var cpu_options = {
+        xaxis: standard_xaxis,
+        yaxes: [{
+                   min: 0,
+                   max: 100,
+                   tickFormatter: function(val, axis) { return(val < axis.max ? val : "%"); },
+                   labelWidth: labelWidth
+        }],
+        crosshair: standard_crosshair,
+        grid:      standard_grid,
+        selection: standard_selection,
+        legend:    standard_legend
+    };
+    var cpu_series = [% encode_json_obj(cpu_series) %];
+    var cpu_plot   = jQuery.plot('#cpu_graph', cpu_series, cpu_options);
+    cpu_plot.draw();
+    plots.push(cpu_plot);
+
+
+    /* load graph */
+    var load_options = {
+        xaxis: { mode: "time",
+             timezone: "browser",
+             position: "top",
+             labelWidth: 0
+        },
+        yaxes: [{
+                   min: 0,
+                   tickFormatter: function(val, axis) { return(val < axis.max ? val : "Load"); },
+                   labelWidth: labelWidth
+        }],
+        crosshair: standard_crosshair,
+        grid:      standard_grid,
+        selection: standard_selection,
+        legend:    standard_legend
+    };
+    var load_series = [% encode_json_obj(load_series) %];
+    var load_plot   = jQuery.plot('#load_graph', load_series, load_options);
+    load_plot.draw();
+    plots.push(load_plot);
+
+
+    /* proc cpu graph */
+    var pcpu_options = {
+        xaxis: standard_xaxis,
+        yaxes: [{
+                   min: 0,
+                   tickFormatter: function(val, axis) { return(val < axis.max ? val : "CPU %"); },
+                   labelWidth: labelWidth
+        }],
+        crosshair: standard_crosshair,
+        grid:      standard_grid,
+        selection: standard_selection,
+        legend:    standard_legend
+    };
+    var pcpu_series = [% encode_json_obj(proc_cpu_series) %];
+    var pcpu_plot   = jQuery.plot('#pcpu_graph', pcpu_series, pcpu_options);
+    pcpu_plot.draw();
+    plots.push(pcpu_plot);
+
+    /* proc memory graph */
+    var pmem_options = {
+        xaxis: { mode: "time",
+             timezone: "browser",
+             labelWidth: 0
+        },
+        yaxes: [{
+                   min: 0,
+                   max: 100,
+                   tickFormatter: function(val, axis) { return(val < axis.max ? val : "MEM %"); },
+                   labelWidth: labelWidth
+        }],
+        crosshair: standard_crosshair,
+        grid:      standard_grid,
+        selection: standard_selection,
+        legend:    standard_legend
+    };
+    var pmem_series = [% encode_json_obj(proc_mem_series) %];
+    var pmem_plot   = jQuery.plot('#pmem_graph', pmem_series, pmem_options);
+    pmem_plot.draw();
+    plots.push(pmem_plot);
+
+
+    /* add zooming and hover */
+    var croshair_locked     = false;
+    var croshair_skip_click = false;
+    jQuery.each(['#mem_graph', '#cpu_graph', '#swap_graph', '#load_graph', '#pcpu_graph', '#pmem_graph'], function(i, e) {
+        /* graph hover */
+        jQuery(e).bind("plothover", function (event, pos, item) {
+            if (item) {
+                var x = new Date(item.datapoint[0]),
+                    y = item.datapoint[1];
+                var val = y+"MB";
+                if(e == '#cpu_graph' || e == '#pcpu_graph' || e == '#pmem_graph') {
+                    // stacked graph would show wrong value
+                    y = item.series.data[item.dataIndex][1];
+                    val = y+"%";
+                }
+                if(e == '#load_graph') {
+                    val = y;
+                }
+                jQuery("#tooltip").html(x + ": " + item.series.label + " = " + val)
+                                  .css({top: item.pageY+5, left: item.pageX+5})
+                                  .fadeIn(200);
+                if(!croshair_locked) {
+                  updateDetailsTable(item.dataIndex);
+                }
+            } else {
+                jQuery("#tooltip").stop(true).hide();
+            }
+
+            if(!croshair_locked) {
+                jQuery.each(plots, function(_, plot) {
+                    plot.setCrosshair(pos);
+                });
+            }
+        });
+
+        /* lock crosshair on click */
+        jQuery(e).bind("plotclick", function (event, pos, item) {
+            if(croshair_skip_click) {
+                croshair_skip_click = false;
+                return;
+            }
+            if(item) {
+                jQuery.each(plots, function(_, plot) {
+                    croshair_locked = true;
+                    plot.lockCrosshair(pos);
+                    updateDetailsTable(item.dataIndex, true);
+                });
+            }
+        });
+
+        /* enable zooming */
+        jQuery(e).bind("plotselected", function (event, ranges) {
+            croshair_skip_click = true;
+            jQuery.each(plots, function(_, plot) {
+                jQuery.each(plot.getXAxes(), function(_, axis) {
+                    var opts = axis.options;
+                    opts.min = ranges.xaxis.from;
+                    opts.max = ranges.xaxis.to;
+                });
+                try {
+                  plot.resize();
+                  plot.setupGrid();
+                } catch(e) {}
+                plot.draw();
+                plot.clearSelection();
+                plot.unlockCrosshair();
+            });
+            croshair_locked = false;
+        });
+        /* set selection for other plots too */
+        jQuery(e).bind("plotselecting", function (event, ranges) {
+            if(ranges == null) { return; }
+            jQuery.each(plots, function(_, plot) {
+                plot.setSelection(ranges, true);
+            });
+        });
+        /* reset zoom on rightclick */
+        jQuery(e).bind("contextmenu", function (event, pos, item) {
+            event.preventDefault();
+            jQuery.each(plots, function(_, plot) {
+                zoomOut(plot);
+            });
+        });
+    });
+   jQuery('#raw_top').tablesorter();
+});
+
+function zoomOut(plot) {
+    jQuery.each(plot.getXAxes(), function(_, axis) {
+        var opts = axis.options;
+        opts.min = undefined;
+        opts.max = undefined;
+    });
+    try {
+        plot.resize();
+        plot.setupGrid();
+    } catch(e) {}
+    croshair_locked = false;
+    plot.unlockCrosshair();
+    plot.draw();
+    jQuery('#raw_top').find("tr:gt(0)").remove();
+    jQuery('#raw_top_div').css({'display': 'none'});
+}
+
+var updateDetailsTableTimestamp;
+function updateDetailsTable(index, fetch) {
+    var timestamp = plots[0].getData()[0].data[index][0];
+    var date = new Date(timestamp);
+    jQuery('#time').html(date.toLocaleString());
+
+    jQuery('#load1').html(plots[3].getData()[0].data[index][1]);
+    jQuery('#load5').html(plots[3].getData()[1].data[index][1]);
+    jQuery('#load15').html(plots[3].getData()[2].data[index][1]);
+
+    jQuery('#cpu_us').html(plots[2].getData()[0].data[index][1]+"%");
+    jQuery('#cpu_sy').html(plots[2].getData()[1].data[index][1]+"%");
+    jQuery('#cpu_ni').html(plots[2].getData()[2].data[index][1]+"%");
+    jQuery('#cpu_wa').html(plots[2].getData()[3].data[index][1]+"%");
+
+    jQuery('#mem').html(plots[0].getData()[0].data[index][1]+"MB");
+    jQuery('#mem_used').html(plots[0].getData()[1].data[index][1]+"MB");
+    jQuery('#buffers').html(plots[0].getData()[2].data[index][1]+"MB");
+    jQuery('#cached').html(plots[0].getData()[3].data[index][1]+"MB");
+
+    jQuery('#swap').html(plots[1].getData()[0].data[index][1]+"MB");
+    jQuery('#swap_used').html(plots[1].getData()[1].data[index][1]+"MB");
+
+    jQuery('#detailstable').css({display: 'inherit'});
+
+    updateDetailsTableTimestamp = timestamp;
+    if(fetch) {
+        fetchTopData(50);
+    } else {
+        jQuery('#raw_top').find("tr:gt(0)").remove();
+        jQuery('#raw_top_div').css({'display': 'none'});
+    }
+}
+
+var fetchTopDataInterval;
+function fetchTopData(delay) {
+    if(delay == undefined) {
+        delay = 2000;
+    }
+    window.clearInterval(fetchTopDataInterval);
+    fetchTopDataInterval = window.setTimeout(fetchTopDataDo, delay);
+}
+
+function fetchTopDataDo() {
+    /* fetch top data */
+    jQuery.ajax({
+        url: url_prefix + 'cgi-bin/omd.cgi?action=top_data&time='+Math.floor(updateDetailsTableTimestamp/1000),
+        type: 'POST',
+        success: function(data) {
+            if(data && data.raw) {
+                jQuery('#raw_top').find("tr:gt(0)").remove();
+                jQuery.each(data.raw, function(_, row) {
+                    var newRow = '<tr>';
+                    jQuery.each(row, function(_, cell) {
+                        newRow += '<td>'+cell+'<\/td>';
+                    });
+                    newRow += '<\/tr>';
+                    jQuery('#raw_top tbody').append(newRow);
+                });
+                jQuery('#raw_top_div').css({'display': 'inherit'});
+                jQuery('#raw_top').trigger("update");
+            } else {
+                jQuery('#raw_top').find("tr:gt(0)").remove();
+                jQuery('#raw_top_div').css({'display': 'none'});
+            }
+        }
+    });
+}
+
+-->
+</script>

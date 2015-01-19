@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -e
+set -u
+set -x
+
+cd $OMD_ROOT
+mkdir -p var/top
+
+export LD_LIBRARY_PATH="$OMD_ROOT/local/lib:$OMD_ROOT/lib"
+
+# save top data
+FILE="var/top/$(date +%s).log"
+export COLUMNS=5000
+gearman_top -b        > $FILE
+top -c -b -n 3 -d 10 >> $FILE
+gearman_top -b       >> $FILE
+sed -i -e 's/\ *$//g'   $FILE
+gzip -9 $FILE
+
+# remove everything except last 3 days
+ls -1tr var/top/*.log.gz | head -n -4320 | xargs -r rm
