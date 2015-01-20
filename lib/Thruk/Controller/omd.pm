@@ -50,6 +50,9 @@ sub omd_cgi : Path('/thruk/cgi-bin/omd.cgi') {
 sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
     my ( $self, $c ) = @_;
 
+    $c->stash->{title} = 'Top Statistics';
+    $c->stash->{page}  = 'status';
+
     our $hosts_list = undef;
 
     # check permissions
