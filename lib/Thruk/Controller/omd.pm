@@ -257,8 +257,7 @@ sub _extract_top_data {
     my $result = {};
     my $cur;
     for my $line (split/\n/mx, $content) {
-        $line =~ s/^\s+//mxo;
-        $line =~ s/\s+$//mxo;
+        _trim($line);
         if($line =~ m/^top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/mxo) {
             if($cur) { $result->{$cur->{time}} = $cur; }
             $cur = { procs => {} };
@@ -354,14 +353,19 @@ sub _get_pattern {
     if($c && $c->config->{'omd_top'}) {
         for my $regex (@{$c->config->{'omd_top'}}) {
             my($k,$p) = split(/\s*=\s*/mx, $regex, 2);
-            $p =~ s/^\s*//mx;
-            $p =~ s/\s*$//mx;
-            $k =~ s/^\s*//mx;
-            $k =~ s/\s*$//mx;
+            _trim($p);
+            _trim($k);
             push @{$pattern}, [$k,$p];
         }
     }
     return($pattern);
+}
+
+##########################################################
+sub _trim {
+    $_[0] =~ s/^\s+//mx;
+    $_[0] =~ s/\s+$//mx;
+    return;
 }
 
 ##########################################################
