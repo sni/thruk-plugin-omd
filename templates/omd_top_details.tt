@@ -308,9 +308,17 @@ jQuery().ready(function() {
                 return;
             }
             if(item) {
+                var itempos = {
+                    pageX:  item.pageX,
+                    pageY:  item.pageY,
+                    x:      item.datapoint[0],
+                    x1:     item.datapoint[0],
+                    y:      item.datapoint[1],
+                    y1:     item.datapoint[1],
+                };
                 jQuery.each(plots, function(_, plot) {
                     croshair_locked = true;
-                    plot.lockCrosshair(pos);
+                    plot.lockCrosshair(itempos);
                     updateDetailsTable(item.dataIndex, true);
                 });
             }
