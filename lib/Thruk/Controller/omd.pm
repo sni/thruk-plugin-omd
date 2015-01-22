@@ -89,18 +89,24 @@ sub top_graph {
     my @files = sort glob($top_dir.'/*');
     my $num = 0;
     my $max = scalar @files;
+    my @files_striped;
     for my $file (@files) {
         $num++;
-        next if($num != 1 and $num != $max and $num%15 != 0);
-        my $out = `zgrep -m 1 'load average:' $file 2>/dev/null`;
-        $file =~ m|/(\d+)\.log|mxo;
-        my $time = $1;
-        if($out =~ m/top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/mxo) {
-            my($hour,$min,$sec) = ($1,$2,$3);
-            $time = ($time - $time%60) + $sec;
-            push @{$load_series->[0]->{'data'}}, [$time*1000, $4];
-            push @{$load_series->[1]->{'data'}}, [$time*1000, $5];
-            push @{$load_series->[2]->{'data'}}, [$time*1000, $6];
+        # use only the first, the last and every 20th file to speed up initial graph
+        next if($num != 1 and $num != $max and $num%20 != 0);
+        push @files_striped, $file;
+    }
+    while( my @chunk = splice( @files_striped, 0, 30 ) ) {
+        my $joined = join(' ', @chunk);
+        my $out = `LC_ALL=C zgrep -F -m 1 'load average:' $joined 2>/dev/null`;
+        if(my @matches = $out =~ m/(\d+)\.log.*?:\s*top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/gmxo) {
+            while( my @m = splice( @matches, 0, 7 ) ) {
+                my($time,$hour,$min,$sec,$l1,$l5,$l15) = (@m);
+                $time = (($time - $time%60) + $sec)*1000;
+                push @{$load_series->[0]->{'data'}}, [$time, $l1];
+                push @{$load_series->[1]->{'data'}}, [$time, $l5];
+                push @{$load_series->[2]->{'data'}}, [$time, $l15];
+            }
         }
     }
     $c->stash->{load_series} = $load_series;
