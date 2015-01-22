@@ -138,9 +138,8 @@ sub top_graph_details {
         if($time < $t1 || $time > $t2) {
             next;
         }
-        my($d, $p)  = _extract_top_data($file, undef, $pattern);
-        $data       = {%{$data}, %{$d}};
-        $proc_found = {%{$proc_found}, %{$p}};
+        my($d) = _extract_top_data($file, undef, $pattern, $proc_found);
+        $data  = {%{$data}, %{$d}};
         $files_read++;
 
         # security limit
@@ -182,31 +181,32 @@ sub top_graph_details {
         push @{$proc_mem_series}, { label => $key, data => [], stack => undef };
     }
     for my $time (sort keys %{$data}) {
-        push @{$mem_series->[0]->{'data'}}, [$time*1000, $data->{$time}->{mem}];
-        push @{$mem_series->[1]->{'data'}}, [$time*1000, $data->{$time}->{mem_used}];
-        push @{$mem_series->[2]->{'data'}}, [$time*1000, $data->{$time}->{buffers}];
-        push @{$mem_series->[3]->{'data'}}, [$time*1000, $data->{$time}->{cached}];
+        my $js_time = $time*1000;
+        my $d       = $data->{$time};
+        push @{$mem_series->[0]->{'data'}}, [$js_time, $d->{mem}];
+        push @{$mem_series->[1]->{'data'}}, [$js_time, $d->{mem_used}];
+        push @{$mem_series->[2]->{'data'}}, [$js_time, $d->{buffers}];
+        push @{$mem_series->[3]->{'data'}}, [$js_time, $d->{cached}];
 
-        push @{$swap_series->[0]->{'data'}}, [$time*1000, $data->{$time}->{swap}];
-        push @{$swap_series->[1]->{'data'}}, [$time*1000, $data->{$time}->{swap_used}];
+        push @{$swap_series->[0]->{'data'}}, [$js_time, $d->{swap}];
+        push @{$swap_series->[1]->{'data'}}, [$js_time, $d->{swap_used}];
 
-        push @{$cpu_series->[0]->{'data'}}, [$time*1000, $data->{$time}->{cpu_us}];
-        push @{$cpu_series->[1]->{'data'}}, [$time*1000, $data->{$time}->{cpu_sy}];
-        push @{$cpu_series->[2]->{'data'}}, [$time*1000, $data->{$time}->{cpu_ni}];
+        push @{$cpu_series->[0]->{'data'}}, [$js_time, $d->{cpu_us}];
+        push @{$cpu_series->[1]->{'data'}}, [$js_time, $d->{cpu_sy}];
+        push @{$cpu_series->[2]->{'data'}}, [$js_time, $d->{cpu_ni}];
         push @{$cpu_series->[3]->{'data'}}, [$time*1000, $data->{$time}->{cpu_wa}];
-        #push @{$cpu_series->[4]->{'data'}}, [$time*1000, $data->{$time}->{cpu_hi}];
-        #push @{$cpu_series->[5]->{'data'}}, [$time*1000, $data->{$time}->{cpu_si}];
-        #push @{$cpu_series->[6]->{'data'}}, [$time*1000, $data->{$time}->{cpu_st}];
+        #push @{$cpu_series->[4]->{'data'}}, [$js_time, $d->{cpu_hi}];
+        #push @{$cpu_series->[5]->{'data'}}, [$js_time, $d->{cpu_si}];
+        #push @{$cpu_series->[6]->{'data'}}, [$js_time, $d->{cpu_st}];
 
-        push @{$load_series->[0]->{'data'}}, [$time*1000, $data->{$time}->{load1}];
-        push @{$load_series->[1]->{'data'}}, [$time*1000, $data->{$time}->{load5}];
-        push @{$load_series->[2]->{'data'}}, [$time*1000, $data->{$time}->{load15}];
+        push @{$load_series->[0]->{'data'}}, [$js_time, $d->{load1}];
+        push @{$load_series->[1]->{'data'}}, [$js_time, $d->{load5}];
+        push @{$load_series->[2]->{'data'}}, [$js_time, $d->{load15}];
 
-        #for my $key (keys %{$data->{$time}->{procs}}) {
         my $x = 0;
         for my $key (sort keys %{$proc_found}) {
-            push @{$proc_cpu_series->[$x]->{'data'}}, [$time*1000, $data->{$time}->{procs}->{$key}->{'cpu'} || 0];
-            push @{$proc_mem_series->[$x]->{'data'}}, [$time*1000, $data->{$time}->{procs}->{$key}->{'mem'} || 0];
+            push @{$proc_cpu_series->[$x]->{'data'}}, [$js_time, $d->{procs}->{$key}->{'cpu'} || 0];
+            push @{$proc_mem_series->[$x]->{'data'}}, [$js_time, $d->{procs}->{$key}->{'mem'} || 0];
             $x++;
         }
     }
@@ -236,7 +236,7 @@ sub top_graph_data {
         last if $timestamp > $time;
         $lastfile = $file;
     }
-    my($d, $p) = _extract_top_data($lastfile, 1);
+    my $d    = _extract_top_data($lastfile, 1);
     my $data = $d->{$time};
     $c->stash->{'json'} = $data;
     return $c->forward('Thruk::View::JSON');
@@ -244,7 +244,7 @@ sub top_graph_data {
 
 ##########################################################
 sub _extract_top_data {
-    my($file, $with_raw, $pattern) = @_;
+    my($file, $with_raw, $pattern, $proc_found) = @_;
     my $content;
     if($file =~ m/\.gz$/mx) {
         $content = `zcat $file`;
@@ -252,12 +252,12 @@ sub _extract_top_data {
         $content = read_file($file);
     }
 
-    my $proc_found   = {};
     my $proc_started = 0;
     my $result = {};
     my $cur;
-    for my $line (split/\n/mx, $content) {
+    for my $line (split/\n/mxo, $content) {
         _trim($line);
+
         if($line =~ m/^top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/mxo) {
             if($cur) { $result->{$cur->{time}} = $cur; }
             $cur = { procs => {} };
@@ -270,37 +270,43 @@ sub _extract_top_data {
             my $time = $1;
             $cur->{'time'}   = ($time - $time%60) + $sec;
             $proc_started = 0;
+            next;
         }
-        elsif($line =~ m/^Tasks:\s*(\d+)\s*total,/mxo) {
-            $cur->{'num'} = $1;
-        }
-        # CPU %
-        elsif($line =~ m/^%?Cpu\(s\):\s*([\.\d]+)[%\s]*us,\s*([\.\d]+)[%\s]*sy,\s*([\.\d]+)[%\s]*ni,\s*([\.\d]+)[%\s]*id,\s*([\.\d]+)[%\s]*wa,\s*([\.\d]+)[%\s]*hi,\s*([\.\d]+)[%\s]*si,\s*([\.\d]+)[%\s]*st/mxo) {
-            $cur->{'cpu_us'} = $1;
-            $cur->{'cpu_sy'} = $2;
-            $cur->{'cpu_ni'} = $3;
-            $cur->{'cpu_id'} = $4;
-            $cur->{'cpu_wa'} = $5;
-            $cur->{'cpu_hi'} = $6;
-            $cur->{'cpu_si'} = $7;
-            $cur->{'cpu_st'} = $8;
-        }
-        # Memory
-        elsif($line =~ m/^(KiB|)\s*Mem:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*buffers/mxo) {
-            my $factor = $1 eq 'KiB' ? 1024 : 1;
-            $cur->{'mem'}      = _normalize_mem($2, $line, $factor);
-            $cur->{'mem_used'} = _normalize_mem($3, $line, $factor);
-            $cur->{'buffers'}  = _normalize_mem($5, $line, $factor);
-        }
-        # Swap / Cached
-        elsif($line =~ m/^(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free(,|\.)\s*([\.\w]+)\s*cached/mxo) {
-            my $factor = $1 eq 'KiB' ? 1024 : 1;
-            $cur->{'swap'}      = _normalize_mem($2, $line, $factor);
-            $cur->{'swap_used'} = _normalize_mem($3, $line, $factor);
-            $cur->{'cached'}    = _normalize_mem($6, $line, $factor);
-        }
-        elsif($proc_started) {
-            my($pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd) = split(/\s+/mx, $line, 12);
+
+        if(!$proc_started) {
+            if($line =~ m/^PID/mxo) {
+                $proc_started = 1;
+            }
+            elsif($line =~ m/^Tasks:\s*(\d+)\s*total,/mxo) {
+                $cur->{'num'} = $1;
+            }
+            # CPU %
+            elsif($line =~ m/^%?Cpu\(s\):\s*([\.\d]+)[%\s]*us,\s*([\.\d]+)[%\s]*sy,\s*([\.\d]+)[%\s]*ni,\s*([\.\d]+)[%\s]*id,\s*([\.\d]+)[%\s]*wa,\s*([\.\d]+)[%\s]*hi,\s*([\.\d]+)[%\s]*si,\s*([\.\d]+)[%\s]*st/mxo) {
+                $cur->{'cpu_us'} = $1;
+                $cur->{'cpu_sy'} = $2;
+                $cur->{'cpu_ni'} = $3;
+                $cur->{'cpu_id'} = $4;
+                $cur->{'cpu_wa'} = $5;
+                $cur->{'cpu_hi'} = $6;
+                $cur->{'cpu_si'} = $7;
+                $cur->{'cpu_st'} = $8;
+            }
+            # Memory
+            elsif($line =~ m/^(KiB|)\s*Mem:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*buffers/mxo) {
+                my $factor = $1 eq 'KiB' ? 1024 : 1;
+                $cur->{'mem'}      = _normalize_mem($2, $line, $factor);
+                $cur->{'mem_used'} = _normalize_mem($3, $line, $factor);
+                $cur->{'buffers'}  = _normalize_mem($5, $line, $factor);
+            }
+            # Swap / Cached
+            elsif($line =~ m/^(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free(,|\.)\s*([\.\w]+)\s*cached/mxo) {
+                my $factor = $1 eq 'KiB' ? 1024 : 1;
+                $cur->{'swap'}      = _normalize_mem($2, $line, $factor);
+                $cur->{'swap_used'} = _normalize_mem($3, $line, $factor);
+                $cur->{'cached'}    = _normalize_mem($6, $line, $factor);
+            }
+        } else {
+            my($pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd) = split(/\s+/mxo, $line, 12);
             next unless $cmd;
             push @{$cur->{'raw'}}, [$pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd] if $with_raw;
             my $key = 'other';
@@ -316,12 +322,9 @@ sub _extract_top_data {
             $cur->{procs}->{$key}->{mem}  += $mem;
             $proc_found->{$key} = 1;
         }
-        elsif($line =~ m/^PID/mxo) {
-            $proc_started = 1;
-        }
     }
     if($cur) { $result->{$cur->{time}} = $cur; }
-    return($result, $proc_found);
+    return($result);
 }
 
 ##########################################################
