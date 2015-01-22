@@ -7,6 +7,7 @@ use warnings;
 use Carp;
 use JSON::XS;
 use File::Slurp qw/read_file/;
+use IPC::Open3 qw/open3/;
 
 =head1 NAME
 
@@ -127,19 +128,16 @@ sub top_graph_details {
     my $t2 = $c->{'request'}->{'parameters'}->{'t2'};
 
     # get all files which are matching the timeframe
-    my $pattern    = _get_pattern($c);
     my $truncated  = 0;
-    my $data       = {};
-    my $proc_found = {};
     my $files_read = 0;
+    my @file_list;
     for my $file (@files) {
         $file =~ m/\/(\d+)\./mxo;
         my $time = $1;
         if($time < $t1 || $time > $t2) {
             next;
         }
-        my($d) = _extract_top_data($file, undef, $pattern, $proc_found);
-        $data  = {%{$data}, %{$d}};
+        push @file_list, $file;
         $files_read++;
 
         # security limit
@@ -148,6 +146,11 @@ sub top_graph_details {
             last;
         }
     }
+
+    # now read all zip files at once
+    my $proc_found = {};
+    my $pattern    = _get_pattern($c);
+    my $data       = _extract_top_data(\@file_list, undef, $pattern, $proc_found);
 
     # create series to draw
     my $mem_series = [
@@ -236,7 +239,7 @@ sub top_graph_data {
         last if $timestamp > $time;
         $lastfile = $file;
     }
-    my $d    = _extract_top_data($lastfile, 1);
+    my $d    = _extract_top_data([$lastfile], 1);
     my $data = $d->{$time};
     $c->stash->{'json'} = $data;
     return $c->forward('Thruk::View::JSON');
@@ -244,19 +247,21 @@ sub top_graph_data {
 
 ##########################################################
 sub _extract_top_data {
-    my($file, $with_raw, $pattern, $proc_found) = @_;
-    my $content;
-    if($file =~ m/\.gz$/mx) {
-        $content = `zcat $file`;
-    } else {
-        $content = read_file($file);
-    }
+    my($files, $with_raw, $pattern, $proc_found) = @_;
+
+    my($pid, $wtr, $rdr, @lines);
+    $pid = open3($wtr, $rdr, $rdr, 'zcat', @{$files});
+    close($wtr);
+
+    $files->[0] =~ m/\/(\d+)\./mxo;
+    my(@startdate) = localtime($1);
 
     my $proc_started = 0;
     my $result = {};
     my $cur;
-    for my $line (split/\n/mxo, $content) {
-        _trim($line);
+    my $last_hour = $startdate[2];
+    while(my $line = <$rdr>) {
+        &_trim($line);
 
         if($line =~ m/^top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/mxo) {
             if($cur) { $result->{$cur->{time}} = $cur; }
@@ -266,9 +271,11 @@ sub _extract_top_data {
             $cur->{'load5'}  = $5;
             $cur->{'load15'} = $6;
             my($hour,$min,$sec) = ($1,$2,$3);
-            $file =~ m/\/(\d+)\./mxo;
-            my $time = $1;
-            $cur->{'time'}   = ($time - $time%60) + $sec;
+            if($last_hour == 23 and $hour != 23) {
+                @startdate = localtime(POSIX::mktime(59, 59, 23, $startdate[3], $startdate[4], $startdate[5], $startdate[6], $startdate[7])+7500);
+            }
+            $cur->{'time'}   = POSIX::mktime($sec, $min, $hour, $startdate[3], $startdate[4], $startdate[5], $startdate[6], $startdate[7]);
+            $last_hour       = $hour;
             $proc_started = 0;
             next;
         }
@@ -356,8 +363,8 @@ sub _get_pattern {
     if($c && $c->config->{'omd_top'}) {
         for my $regex (@{$c->config->{'omd_top'}}) {
             my($k,$p) = split(/\s*=\s*/mx, $regex, 2);
-            _trim($p);
-            _trim($k);
+            &_trim($p);
+            &_trim($k);
             push @{$pattern}, [$k,$p];
         }
     }

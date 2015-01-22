@@ -9,7 +9,7 @@ plan tests => 3;
 use_ok('Thruk::Controller::omd');
 
 ###########################################################
-test_file('t/data/debian6.txt', {
+test_file('t/data/1421945063.debian6.txt', {
             'num'       => '149',
             'load1'     => '3.68',
             'load5'     => '3.34',
@@ -31,7 +31,7 @@ test_file('t/data/debian6.txt', {
             'procs'     => { 'other' => { 'cpu' => '103', 'num' => 3, 'mem' => '0.5', 'res' => 0, 'virt' => 0 } },
 });
 
-test_file('t/data/ubuntu14-04.txt', {
+test_file('t/data/1421945063.ubuntu14-04.txt', {
             'num'       => '404',
             'load1'     => '0.26',
             'load5'     => '0.35',
@@ -56,7 +56,9 @@ test_file('t/data/ubuntu14-04.txt', {
 ###########################################################
 sub test_file {
     my($file, $expected) = @_;
-    my($d) = Thruk::Controller::omd::_extract_top_data($file);
+    `cat $file | gzip > $file.gz`;
+    my $d = Thruk::Controller::omd::_extract_top_data([$file.'.gz']);
+    unlink($file.'.gz');
     my $data = $d->{(keys %{$d})[0]};
     delete $data->{'time'};
     is_deeply($data, $expected, $file);
