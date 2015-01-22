@@ -126,7 +126,8 @@ sub top_graph_details {
     my $t1 = $c->{'request'}->{'parameters'}->{'t1'};
     my $t2 = $c->{'request'}->{'parameters'}->{'t2'};
 
-    # get last 10 files for now
+    # get all files which are matching the timeframe
+    my $truncated  = 0;
     my $data       = {};
     my $proc_found = {};
     my $files_read = 0;
@@ -139,8 +140,13 @@ sub top_graph_details {
         my($d, $p)  = _extract_top_data($c, $file);
         $data       = {%{$data}, %{$d}};
         $proc_found = {%{$proc_found}, %{$p}};
-        last if $files_read > 300;
         $files_read++;
+
+        # security limit
+        if($files_read > 500) {
+            $truncated = 1;
+            last;
+        }
     }
 
     # create series to draw
@@ -203,6 +209,7 @@ sub top_graph_details {
             $x++;
         }
     }
+    $c->stash->{truncated}       = $truncated;
     $c->stash->{mem_series}      = $mem_series;
     $c->stash->{swap_series}     = $swap_series;
     $c->stash->{cpu_series}      = $cpu_series;
