@@ -98,7 +98,7 @@ sub top_graph {
     }
     while( my @chunk = splice( @files_striped, 0, 30 ) ) {
         my $joined = join(' ', @chunk);
-        my $out = `LC_ALL=C zgrep -F -m 1 'load average:' $joined 2>/dev/null`;
+        my $out = `LC_ALL=C zgrep -H -F -m 1 'load average:' $joined 2>/dev/null`;
         if(my @matches = $out =~ m/(\d+)\.log.*?:\s*top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/gmxo) {
             while( my @m = splice( @matches, 0, 7 ) ) {
                 my($time,$hour,$min,$sec,$l1,$l5,$l15) = (@m);
