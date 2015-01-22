@@ -127,6 +127,7 @@ sub top_graph_details {
     my $t2 = $c->{'request'}->{'parameters'}->{'t2'};
 
     # get all files which are matching the timeframe
+    my $pattern    = _get_pattern($c);
     my $truncated  = 0;
     my $data       = {};
     my $proc_found = {};
@@ -137,7 +138,7 @@ sub top_graph_details {
         if($time < $t1 || $time > $t2) {
             next;
         }
-        my($d, $p)  = _extract_top_data($c, $file);
+        my($d, $p)  = _extract_top_data($file, undef, $pattern);
         $data       = {%{$data}, %{$d}};
         $proc_found = {%{$proc_found}, %{$p}};
         $files_read++;
@@ -235,7 +236,7 @@ sub top_graph_data {
         last if $timestamp > $time;
         $lastfile = $file;
     }
-    my($d, $p) = _extract_top_data($c, $lastfile, 1);
+    my($d, $p) = _extract_top_data($lastfile, 1);
     my $data = $d->{$time};
     $c->stash->{'json'} = $data;
     return $c->forward('Thruk::View::JSON');
@@ -243,24 +244,12 @@ sub top_graph_data {
 
 ##########################################################
 sub _extract_top_data {
-    my($c, $file, $with_raw) = @_;
+    my($file, $with_raw, $pattern) = @_;
     my $content;
     if($file =~ m/\.gz$/mx) {
         $content = `zcat $file`;
     } else {
         $content = read_file($file);
-    }
-
-    my $pattern = [];
-    if($c && $c->config->{'omd_top'}) {
-        for my $regex (@{$c->config->{'omd_top'}}) {
-            my($k,$p) = split(/\s*=\s*/mx, $regex, 2);
-            $p =~ s/^\s*//mx;
-            $p =~ s/\s*$//mx;
-            $k =~ s/^\s*//mx;
-            $k =~ s/\s*$//mx;
-            push @{$pattern}, [$k,$p];
-        }
     }
 
     my $proc_found   = {};
@@ -305,7 +294,7 @@ sub _extract_top_data {
             $cur->{'buffers'}  = _normalize_mem($5, $line, $factor);
         }
         # Swap / Cached
-        elsif($line =~ m/(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free(,|\.)\s*([\.\w]+)\s*cached/mxo) {
+        elsif($line =~ m/^(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free(,|\.)\s*([\.\w]+)\s*cached/mxo) {
             my $factor = $1 eq 'KiB' ? 1024 : 1;
             $cur->{'swap'}      = _normalize_mem($2, $line, $factor);
             $cur->{'swap_used'} = _normalize_mem($3, $line, $factor);
@@ -317,7 +306,7 @@ sub _extract_top_data {
             push @{$cur->{'raw'}}, [$pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd] if $with_raw;
             my $key = 'other';
             for my $p (@{$pattern}) {
-                if($cmd =~ m|$p->[0]|mx) {
+                if($line =~ m|$p->[0]|mx) {
                     $key = $p->[1];
                 }
             }
@@ -356,6 +345,23 @@ sub _normalize_mem {
     }
     $value = $value * $factor;
     return(int($value/1024/1024));
+}
+
+##########################################################
+sub _get_pattern {
+    my($c) = @_;
+    my $pattern = [];
+    if($c && $c->config->{'omd_top'}) {
+        for my $regex (@{$c->config->{'omd_top'}}) {
+            my($k,$p) = split(/\s*=\s*/mx, $regex, 2);
+            $p =~ s/^\s*//mx;
+            $p =~ s/\s*$//mx;
+            $k =~ s/^\s*//mx;
+            $k =~ s/\s*$//mx;
+            push @{$pattern}, [$k,$p];
+        }
+    }
+    return($pattern);
 }
 
 ##########################################################

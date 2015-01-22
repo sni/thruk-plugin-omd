@@ -56,7 +56,7 @@ test_file('t/data/ubuntu14-04.txt', {
 ###########################################################
 sub test_file {
     my($file, $expected) = @_;
-    my($d, $p)  = Thruk::Controller::omd::_extract_top_data(undef, $file);
+    my($d, $p)  = Thruk::Controller::omd::_extract_top_data($file);
     my $data = $d->{(keys %{$d})[0]};
     delete $data->{'time'};
     is_deeply($data, $expected, $file);
