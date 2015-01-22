@@ -93,8 +93,8 @@ sub top_graph {
     my @files_striped;
     for my $file (@files) {
         $num++;
-        # use only the first, the last and every 20th file to speed up initial graph
-        next if($num != 1 and $num != $max and $num%20 != 0);
+        # use only the first, the last and every 30th file to speed up initial graph
+        next if($num != 1 and $num != $max and $num%30 != 0);
         push @files_striped, $file;
     }
     while( my @chunk = splice( @files_striped, 0, 30 ) ) {
