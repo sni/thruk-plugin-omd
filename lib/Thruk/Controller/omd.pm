@@ -340,11 +340,12 @@ sub _normalize_mem {
     my($value, $line, $factor) = @_;
     $factor = 1 unless $factor;
 
-    if($value =~ m/^([\d\.]+)([a-z])$/) {
+    if($value =~ m/^([\d\.]+)([a-zA-Z])$/) {
         $value = $1;
-        if(   $2 eq 'k') { $value = $value * 1024; }
-        elsif($2 eq 'm') { $value = $value * 1024 * 1024; }
-        elsif($2 eq 'g') { $value = $value * 1024 * 1024 * 1024; }
+        my $unit = lc($2);
+        if(   $unit eq 'k') { $value = $value * 1024; }
+        elsif($unit eq 'm') { $value = $value * 1024 * 1024; }
+        elsif($unit eq 'g') { $value = $value * 1024 * 1024 * 1024; }
         else {
             die("could not parse top data ($value) in line: $line\n");
         }
