@@ -20,4 +20,4 @@ sed -i -e 's/\ *$//g'   $FILE
 gzip -9 $FILE
 
 # remove everything except last 7 days
-ls -1tr var/top/*.log.gz | head -n -10080 | xargs -r rm
+ls -1tr var/top/*.log.gz var/top/*.log 2>/dev/null | head -n -10080 | xargs -r rm
