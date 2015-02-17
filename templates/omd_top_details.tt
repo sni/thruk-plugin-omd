@@ -45,12 +45,15 @@
       <div id="swap_graph" style="height: 180px; width: 750px;"></div>
       <div id="pcpu_graph" style="height: 260px; width: 750px;"></div>
       <div id="pmem_graph" style="height: 260px; width: 750px;"></div>
+      <div id="gearman_graph" style="height: 260px; width: 750px;"></div>
     </td>
     <td valign=top style="padding-left: 5px; padding-top: 15px;">
       <table border=1 cellpadding=2 style="display: none;" id="detailstable">
         <tr>
           <th>Time</th>
-          <td colspan=8><span id="time"></span></td>
+          <td colspan=4><span id="time"></span></td>
+          <th>Source</th>
+          <td colspan=3><span id="filename"></span></td>
         </tr>
         <tr>
           <th>Load</th>
@@ -91,6 +94,15 @@
           <th>Used</th>
           <td><span id="swap_used"></span></td>
           <td colspan=4>&nbsp;</td>
+        </tr>
+        <tr id="gearman_details" style="display: none;">
+          <th>Gearman</th>
+          <th>Worker</th>
+          <td><span id="worker"></span></td>
+          <th>Waiting</th>
+          <td><span id="waiting"></span></td>
+          <th>Running</th>
+          <td><span id="running"></span></td>
         </tr>
       </table>
       <br>
@@ -265,11 +277,38 @@ jQuery().ready(function() {
     pmem_plot.draw();
     plots.push(pmem_plot);
 
+    /* gearman graph */
+    var gearman_options = {
+        xaxis: { mode: "time",
+             timezone: "browser",
+             labelWidth: 0
+        },
+        yaxes: [{
+                   min: 0,
+                   //max: 100,
+                   //tickFormatter: function(val, axis) { return(val < axis.max ? val : ""); },
+                   labelWidth: labelWidth
+        }],
+        crosshair: standard_crosshair,
+        grid:      standard_grid,
+        selection: standard_selection,
+        legend:    standard_legend
+    };
+    var gearman_series = [% encode_json_obj(gearman_series) %];
+    if(gearman_series[0].data.length > 0) {
+        var gearman_plot   = jQuery.plot('#gearman_graph', gearman_series, gearman_options);
+        gearman_plot.draw();
+        plots.push(gearman_plot);
+        jQuery('#gearman_graph').show();
+    } else {
+        jQuery('#gearman_graph').hide();
+    }
+
 
     /* add zooming and hover */
     var croshair_locked     = false;
     var croshair_skip_click = false;
-    jQuery.each(['#mem_graph', '#cpu_graph', '#swap_graph', '#load_graph', '#pcpu_graph', '#pmem_graph'], function(i, e) {
+    jQuery.each(['#mem_graph', '#cpu_graph', '#swap_graph', '#load_graph', '#pcpu_graph', '#pmem_graph', '#gearman_graph'], function(i, e) {
         /* graph hover */
         jQuery(e).bind("plothover", function (event, pos, item) {
             if (item) {
@@ -284,7 +323,13 @@ jQuery().ready(function() {
                 if(e == '#load_graph') {
                     val = y;
                 }
-                jQuery("#tooltip").html(x + ": " + item.series.label + " = " + val)
+                var tooltip = x + ": " + item.series.label + " = " + val;
+                if(e == '#gearman_graph') {
+                    tooltip = x + ": " + gearman_series[0].label + ": " + gearman_series[0].data[item.dataIndex][1]
+                                + ", " + gearman_series[1].label + ": " + gearman_series[1].data[item.dataIndex][1]
+                                + ", " + gearman_series[2].label + ": " + gearman_series[2].data[item.dataIndex][1];
+                }
+                jQuery("#tooltip").html(tooltip)
                                   .css({top: item.pageY+5, left: item.pageX+5})
                                   .fadeIn(200);
                 if(!croshair_locked) {
@@ -439,6 +484,15 @@ function fetchTopDataDo() {
                 });
                 jQuery('#raw_top_div').css({'display': 'inherit'});
                 jQuery('#raw_top').trigger("update");
+                jQuery('#filename').html(data.file);
+                if(data['gearman']) {
+                    jQuery('#worker').html(data.gearman.service.worker);
+                    jQuery('#running').html(data.gearman.service.running);
+                    jQuery('#waiting').html(data.gearman.service.waiting);
+                    jQuery('#gearman_details').show();
+                } else {
+                    jQuery('#gearman_details').hide();
+                }
             } else {
                 jQuery('#raw_top').find("tr:gt(0)").remove();
                 jQuery('#raw_top_div').css({'display': 'none'});

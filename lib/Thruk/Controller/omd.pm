@@ -182,6 +182,11 @@ sub top_graph_details {
         { label => "swap total",  color => "#000000", data =>  [] },
         { label => "swap used",   color => "#edc240", data =>  [] },
     ];
+    my $gearman_series = [
+        { label => "checks running", color => "#0354E4", data =>  [] },
+        { label => "checks waiting", color => "#F46312", data =>  [] },
+        { label => "worker",         color => "#00C600", data =>  [] },
+    ];
     my $proc_cpu_series = [];
     my $proc_mem_series = [];
     for my $key (sort keys %{$proc_found}) {
@@ -211,6 +216,12 @@ sub top_graph_details {
         push @{$load_series->[1]->{'data'}}, [$js_time, $d->{load5}];
         push @{$load_series->[2]->{'data'}}, [$js_time, $d->{load15}];
 
+        if($d->{gearman}) {
+            push @{$gearman_series->[0]->{'data'}}, [$js_time, $d->{gearman}->{service}->{running}];
+            push @{$gearman_series->[1]->{'data'}}, [$js_time, $d->{gearman}->{service}->{waiting}];
+            push @{$gearman_series->[2]->{'data'}}, [$js_time, $d->{gearman}->{service}->{worker}];
+        }
+
         my $x = 0;
         for my $key (sort keys %{$proc_found}) {
             push @{$proc_cpu_series->[$x]->{'data'}}, [$js_time, $d->{procs}->{$key}->{'cpu'} || 0];
@@ -225,6 +236,7 @@ sub top_graph_details {
     $c->stash->{load_series}     = $load_series;
     $c->stash->{proc_cpu_series} = $proc_cpu_series;
     $c->stash->{proc_mem_series} = $proc_mem_series;
+    $c->stash->{gearman_series}  = $gearman_series;
     return;
 }
 
@@ -246,6 +258,8 @@ sub top_graph_data {
     }
     my $d    = _extract_top_data([$lastfile], 1);
     my $data = $d->{$time};
+    $data->{'file'}     = $lastfile;
+    if(defined $ENV{'OMD_ROOT'}) { my $root = $ENV{'OMD_ROOT'}; $data->{'file'} = s|$root||gmx; }
     $c->stash->{'json'} = $data;
     return $c->forward('Thruk::View::JSON');
 }
@@ -261,9 +275,10 @@ sub _extract_top_data {
     $files->[0] =~ m/\/(\d+)\./mxo;
     my(@startdate) = localtime($1);
 
-    my $proc_started = 0;
-    my $result = {};
-    my $cur;
+    my $proc_started    = 0;
+    my $gearman_started = 0;
+    my $result          = {};
+    my($cur, $gearman);
     my $last_hour = $startdate[2];
     while(my $line = <$rdr>) {
         &_trim($line);
@@ -281,13 +296,31 @@ sub _extract_top_data {
             }
             $cur->{'time'}   = POSIX::mktime($sec, $min, $hour, $startdate[3], $startdate[4], $startdate[5], $startdate[6], $startdate[7]);
             $last_hour       = $hour;
-            $proc_started = 0;
+            $proc_started    = 0;
+            $gearman_started = 0;
+            if($gearman) {
+                $cur->{gearman} = $gearman;
+                $gearman        = undef;
+            }
             next;
+        }
+
+        if($line =~ m/^Queue\ Name/mxo) {
+            $gearman_started = 1;
+            $gearman         = {};
+            next;
+        }
+
+        if($gearman_started) {
+            if($line =~ m/^(\w+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)/mxo) {
+                $gearman->{$1} = { worker => 0+$2, waiting => 0+$3, running => 0+$4 };
+            }
         }
 
         if(!$proc_started) {
             if($line =~ m/^PID/mxo) {
-                $proc_started = 1;
+                $proc_started    = 1;
+                $gearman_started = 0;
             }
             elsif($line =~ m/^Tasks:\s*(\d+)\s*total,/mxo) {
                 $cur->{'num'} = $1;
@@ -334,6 +367,9 @@ sub _extract_top_data {
             $cur->{procs}->{$key}->{mem}  += $mem;
             $proc_found->{$key} = 1;
         }
+    }
+    if($gearman && $cur) {
+        $cur->{gearman} = $gearman;
     }
     if($cur) { $result->{$cur->{time}} = $cur; }
     return($result);
