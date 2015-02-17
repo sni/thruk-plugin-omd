@@ -21,9 +21,10 @@ In order to put processes into groups, you can define those groups in your
 
 For example:
 
-    omd_top = squid               = squid
-    omd_top = apache2             = apache2
-    omd_top = mysqld              = mysql
+    omd_top = squid                   = squid
+    omd_top = /sbin/httpd2            = apache2
+    omd_top = /usr/sbin/mysqld        = mysql
+    omd_top = /bin/mod_gearman_worker = mod-gearman
 
 You shouldn't define more than 10 groups, otherwise they won't fit onto
 the resulting graph. You have to reload the apache to activate changes
