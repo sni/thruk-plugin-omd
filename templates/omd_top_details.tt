@@ -1,12 +1,12 @@
 ﻿[% PROCESS _header.tt
     js           => [ "plugins/reports2/flot-d7c58b5/jquery.flot.js",
                       "plugins/reports2/flot-d7c58b5/jquery.flot.time.js",
-                      "plugins/omd/jquery.flot.selection.js",
-                      "plugins/omd/jquery.flot.stack.js",
-                      "plugins/omd/jquery.flot.crosshair.js",
-                      "plugins/omd/jquery.tablesorter.min.js",
+                      "plugins/${plugin}/jquery.flot.selection.js",
+                      "plugins/${plugin}/jquery.flot.stack.js",
+                      "plugins/${plugin}/jquery.flot.crosshair.js",
+                      "plugins/${plugin}/jquery.tablesorter.min.js",
                     ],
-    css          => [ "plugins/omd/style.css", ],
+    css          => [ "plugins/${plugin}/style.css", ],
 %]
 [% PROCESS _message.tt %]
 [% USE date %]

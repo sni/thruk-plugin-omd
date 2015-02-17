@@ -28,7 +28,11 @@ Thruk::Utils::Menu::insert_item('Reports', {
                                     'name'  => 'OMD Top',
                          });
 
-my $top_dir = defined $ENV{'OMD_ROOT'} ? $ENV{'OMD_ROOT'}.'/var/top' : 'var/top';
+my $top_dir    = defined $ENV{'OMD_ROOT'} ? $ENV{'OMD_ROOT'}.'/var/top' : 'var/top';
+my $pluginname = 'omd';
+eval { # not available in older thruk releases
+    $pluginname = Thruk::Utils::get_plugin_name(__FILE__, __PACKAGE__);
+};
 
 ######################################
 
@@ -40,6 +44,7 @@ page: /thruk/cgi-bin/omd.cgi
 sub omd_cgi : Path('/thruk/cgi-bin/omd.cgi') {
     my ( $self, $c ) = @_;
     return if defined $c->{'canceled'};
+    $c->stash->{plugin} = $pluginname;
     return $c->detach('/omd/index');
 }
 
@@ -51,8 +56,8 @@ sub omd_cgi : Path('/thruk/cgi-bin/omd.cgi') {
 sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
     my ( $self, $c ) = @_;
 
-    $c->stash->{title} = 'Top Statistics';
-    $c->stash->{page}  = 'status';
+    $c->stash->{title}  = 'Top Statistics';
+    $c->stash->{page}   = 'status';
 
     our $hosts_list = undef;
 
