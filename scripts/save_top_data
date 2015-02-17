@@ -1,8 +1,8 @@
 #!/bin/bash
 
 set -e
-set -u
-set -x
+#set -u
+#set -x
 
 cd $OMD_ROOT
 mkdir -p var/top
@@ -12,6 +12,7 @@ export LD_LIBRARY_PATH="$OMD_ROOT/local/lib:$OMD_ROOT/lib"
 # save top data
 FILE="var/top/$(date +%s).log"
 export COLUMNS=5000
+set +e
 gearman_top -b        > $FILE
 top -c -b -n 3 -d 10 >> $FILE
 gearman_top -b       >> $FILE
