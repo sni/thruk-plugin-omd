@@ -381,7 +381,7 @@ sub _normalize_mem {
     my($value, $line, $factor) = @_;
     $factor = 1 unless $factor;
 
-    if($value =~ m/^([\d\.]+)([a-zA-Z])$/) {
+    if($value =~ m/^([\d\.]+)([a-zA-Z])$/mx) {
         $value = $1;
         my $unit = lc($2);
         if(   $unit eq 'k') { $value = $value * 1024; }
