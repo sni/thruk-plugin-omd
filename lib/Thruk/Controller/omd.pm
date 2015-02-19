@@ -178,15 +178,15 @@ sub top_graph_details {
     # create series to draw
     my $mem_series = [
         { label => "memory total",  data =>  [], color => "#000000"  },
-        { label => "memory used",   data =>  [] },
-        { label => "buffers",       data =>  [] },
-        { label => "cached",        data =>  [] },
+        { label => "memory used",   data =>  [], stack => undef, lines => { fill => 1 } },
+        { label => "buffers",       data =>  [], stack => 1, lines => { fill => 1 } },
+        { label => "cached",        data =>  [], stack => 1, lines => { fill => 1 } },
     ];
     my $cpu_series = [
-        { label => "user",      data =>  [], stack => undef },
-        { label => "system",    data =>  [], stack => undef },
-        { label => "nice",      data =>  [], stack => undef },
-        { label => "wait",      data =>  [], stack => undef },
+        { label => "user",      data =>  [], stack => 1, lines => { fill => 1 } },
+        { label => "system",    data =>  [], stack => 1, lines => { fill => 1 } },
+        { label => "nice",      data =>  [], stack => 1, lines => { fill => 1 } },
+        { label => "wait",      data =>  [], stack => 1, lines => { fill => 1 } },
         #{ label => "high",      data =>  [], stack => undef },
         #{ label => "si",        data =>  [], stack => undef },
         #{ label => "st",        data =>  [], stack => undef },
@@ -198,7 +198,7 @@ sub top_graph_details {
     ];
     my $swap_series = [
         { label => "swap total",  color => "#000000", data =>  [] },
-        { label => "swap used",   color => "#edc240", data =>  [] },
+        { label => "swap used",   color => "#edc240", data =>  [], lines => { fill => 1 } },
     ];
     my $gearman_series = [
         { label => "checks running", color => "#0354E4", data =>  [] },
