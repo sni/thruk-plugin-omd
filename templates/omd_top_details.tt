@@ -308,7 +308,7 @@ jQuery().ready(function() {
                 if(e == '#mem_graph')     { tooltip = getTooltipFromSeries(d, mem_series,     item.dataIndex, "MB"          )};
                 if(e == '#swap_graph')    { tooltip = getTooltipFromSeries(d, swap_series,    item.dataIndex, "MB"          )};
                 if(e == '#pcpu_graph')    { tooltip = getTooltipFromSeries(d, pcpu_series,    item.dataIndex,  "%", true, 1 )};
-                if(e == '#pmem_graph')    { tooltip = getTooltipFromSeries(d, pmem_series,    item.dataIndex, "MB", true, 1 )};
+                if(e == '#pmem_graph')    { tooltip = getTooltipFromSeries(d, pmem_series,    item.dataIndex,  "%", true, 1 )};
                 if(e == '#gearman_graph') { tooltip = getTooltipFromSeries(d, gearman_series, item.dataIndex                )};
                 jQuery("#tooltip").html(tooltip)
                                   .css({top: item.pageY+5, left: item.pageX+5})
@@ -482,15 +482,19 @@ function fetchTopDataDo() {
 }
 
 function getTooltipFromSeries(date, series, index, unit, skipEmpty, toFixed) {
-    var labels = [];
-    jQuery.each(series, function(_, s) {
+    var tooltip = "<table class='tooltip'><tr><td class='date'>"+date+"</td>";
+    jQuery.each(series, function(i, s) {
         if(!skipEmpty || s.data[index][1] != 0) {
             var val = s.data[index][1];
             if(toFixed != undefined) { val = Number(val).toFixed(toFixed); }
-            labels.push(s.label + ": " + val+(unit ? unit : ''));
+            if(i != 0) {
+                tooltip += "<tr><td></td>";
+            }
+            tooltip += "<td class='var'>"+s.label + ":</td>";
+            tooltip += "<td class='val'>"+val+(unit ? unit : '')+"</td></tr>";
         }
     });
-    var tooltip = date + ": "+labels.join(", ");
+    tooltip += "</table>";
     return(tooltip);
 }
 

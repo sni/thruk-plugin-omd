@@ -8,6 +8,14 @@
     z-index: 100;
 }
 
+table.tooltip .var {
+    font-weight: bold;
+}
+
+table.tooltip .val {
+    text-align: right;
+}
+
 #detailstable {
     border-collapse: collapse;
     border: 1px solid #676767;
