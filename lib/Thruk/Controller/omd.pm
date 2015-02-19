@@ -93,7 +93,7 @@ sub top_graph {
         { label => "load 5",  data =>  [] },
         { label => "load 15", data =>  [] },
     ];
-    my @files = sort glob($top_dir.'/*');
+    my @files = sort glob("$top_dir/*.log $top_dir/*.gz");
     my $num = 0;
     my $max = scalar @files;
     my @files_striped;
@@ -132,7 +132,7 @@ sub top_graph_details {
     my ( $self, $c ) = @_;
     $c->stash->{template} = 'omd_top_details.tt';
     $c->stash->{'no_auto_reload'}      = 1;
-    my @files = sort glob($top_dir.'/*');
+    my @files = sort glob("$top_dir/*.log $top_dir/*.gz");
 
     my $t1 = $c->{'request'}->{'parameters'}->{'t1'};
     my $t2 = $c->{'request'}->{'parameters'}->{'t2'};
@@ -252,7 +252,7 @@ sub top_graph_details {
 =cut
 sub top_graph_data {
     my ( $self, $c ) = @_;
-    my @files = sort glob($top_dir.'/*');
+    my @files = sort glob("$top_dir/*.log $top_dir/*.gz");
     my $time = $c->{'request'}->{'parameters'}->{'time'};
     my $lastfile;
     for my $file (@files) {
