@@ -14,7 +14,7 @@ FILE="var/top/$(date +%s).log"
 export COLUMNS=5000
 set +e
 gearman_top -b        > $FILE
-top -c -b -n 3 -d 10 >> $FILE
+top -c -b -n 2 -d 30 >> $FILE
 gearman_top -b       >> $FILE
 sed -i -e 's/\ *$//g'   $FILE
 gzip -9 $FILE
