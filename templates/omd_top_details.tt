@@ -92,15 +92,6 @@
           <td><span id="swap_used"></span></td>
           <td colspan=4>&nbsp;</td>
         </tr>
-        <tr id="gearman_details" style="display: none;">
-          <th>Gearman</th>
-          <th>Worker</th>
-          <td><span id="worker"></span></td>
-          <th>Waiting</th>
-          <td><span id="waiting"></span></td>
-          <th>Running</th>
-          <td><span id="running"></span></td>
-        </tr>
       </table>
       <br>
       <div id="raw_top_div" style="display: none; margin-top: 5px;">
@@ -490,14 +481,6 @@ function fetchTopDataDo() {
                 jQuery('#raw_top_div').css({'display': 'inherit'});
                 jQuery('#raw_top').trigger("update");
                 jQuery('#filename').html(data.file);
-                if(data['gearman']) {
-                    jQuery('#worker').html(data.gearman.service.worker);
-                    jQuery('#running').html(data.gearman.service.running);
-                    jQuery('#waiting').html(data.gearman.service.waiting);
-                    jQuery('#gearman_details').show();
-                } else {
-                    jQuery('#gearman_details').hide();
-                }
             } else {
                 jQuery('#raw_top').find("tr:gt(0)").remove();
                 jQuery('#raw_top_div').css({'display': 'none'});
