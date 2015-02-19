@@ -56,8 +56,9 @@ sub omd_cgi : Path('/thruk/cgi-bin/omd.cgi') {
 sub index :Path :Args(0) :MyAction('AddSafeDefaults') {
     my ( $self, $c ) = @_;
 
-    $c->stash->{title}  = 'Top Statistics';
-    $c->stash->{page}   = 'status';
+    $c->stash->{title}   = 'Top Statistics';
+    $c->stash->{page}    = 'status';
+    $c->stash->{minimal} = 1;
 
     our $hosts_list = undef;
 
