@@ -310,7 +310,8 @@ sub _extract_top_data {
     my $last_hour = $startdate[2];
     my $last_min  = -1;
     while(my $line = <$rdr>) {
-        &_trim($line);
+        $line =~ s/^\s+//mxo; # way faster than calling _trim millions of times
+        $line =~ s/\s+$//mxo;
 
         if($line =~ m/^top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/mxo) {
             if($cur) { $result->{$cur->{time}} = $cur; }
@@ -380,16 +381,16 @@ sub _extract_top_data {
             # Memory
             elsif($line =~ m/^(KiB|)\s*Mem:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*buffers/mxo) {
                 my $factor = $1 eq 'KiB' ? 1024 : 1;
-                $cur->{'mem'}      = &_normalize_mem($2, $line, $factor);
-                $cur->{'mem_used'} = &_normalize_mem($3, $line, $factor);
-                $cur->{'buffers'}  = &_normalize_mem($5, $line, $factor);
+                $cur->{'mem'}      = &_normalize_mem($2, $factor);
+                $cur->{'mem_used'} = &_normalize_mem($3, $factor);
+                $cur->{'buffers'}  = &_normalize_mem($5, $factor);
             }
             # Swap / Cached
             elsif($line =~ m/^(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free(,|\.)\s*([\.\w]+)\s*cached/mxo) {
                 my $factor = $1 eq 'KiB' ? 1024 : 1;
-                $cur->{'swap'}      = &_normalize_mem($2, $line, $factor);
-                $cur->{'swap_used'} = &_normalize_mem($3, $line, $factor);
-                $cur->{'cached'}    = &_normalize_mem($6, $line, $factor);
+                $cur->{'swap'}      = &_normalize_mem($2, $factor);
+                $cur->{'swap_used'} = &_normalize_mem($3, $factor);
+                $cur->{'cached'}    = &_normalize_mem($6, $factor);
             }
         } else {
             #    0      1     2      3      4      5     6      7       8     9     10     11
@@ -408,8 +409,16 @@ sub _extract_top_data {
             my $procs = $cur->{procs}->{$key};
             $procs->{num}  += 1;
             $procs->{cpu}  += $proc[8];
-            $procs->{virt} += &_normalize_mem($proc[4], $line);
-            $procs->{res}  += &_normalize_mem($proc[5], $line);
+            if($proc[4] =~ m/^[\d\.]+$/mxo) {
+                $procs->{virt} += int($proc[4]/1024/1024); # inline is much faster than million function calls
+            } else {
+                $procs->{virt} += &_normalize_mem($proc[4]);
+            }
+            if($proc[5] =~ m/^[\d\.]+$/mxo) {
+                $procs->{res} += int($proc[5]/1024/1024); # inline is much faster than million function calls
+            } else {
+                $procs->{res} += &_normalize_mem($proc[5]);
+            }
             $procs->{mem}  += $proc[9];
             $proc_found->{$key} = 1;
         }
@@ -424,24 +433,24 @@ sub _extract_top_data {
 ##########################################################
 # returns memory in megabyte
 sub _normalize_mem {
-    my($value, $line, $factor) = @_;
-    $factor = 1 unless $factor;
-
+    my($value, $factor) = @_;
     if($value =~ m/^([\d\.]+)([a-zA-Z])$/mxo) {
         $value = $1;
         my $unit = lc($2);
-        if(   $unit eq 'k') { $value = $value * 1024; }
-        elsif($unit eq 'm') { $value = $value * 1024 * 1024; }
-        elsif($unit eq 'g') { $value = $value * 1024 * 1024 * 1024; }
+        if(   $unit eq 'k') { $value = $value / 1024; }
+        elsif($unit eq 'm') {  }
+        elsif($unit eq 'g') { $value = $value * 1024; }
         else {
-            die("could not parse top data ($value) in line: $line\n");
+            confess("could not parse top data: $value\n");
         }
     }
-    if($value !~ m/^[\d\.]*$/mxo) {
-        die("could not parse top data ($value) in line: $line\n");
+    elsif($value !~ m/^[\d\.]*$/mxo) {
+        confess("could not parse top data: $value\n");
+    } else {
+        $value = $value/1024/1024;
     }
-    $value = $value * $factor;
-    return(int($value/1024/1024));
+    $value = $value * $factor if defined $factor;
+    return(int($value));
 }
 
 ##########################################################
@@ -461,8 +470,8 @@ sub _get_pattern {
 
 ##########################################################
 sub _trim {
-    $_[0] =~ s/^\s+//mx;
-    $_[0] =~ s/\s+$//mx;
+    $_[0] =~ s/^\s+//mxo;
+    $_[0] =~ s/\s+$//mxo;
     return;
 }
 
