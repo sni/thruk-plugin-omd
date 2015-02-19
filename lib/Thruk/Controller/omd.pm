@@ -97,11 +97,15 @@ sub top_graph {
     my $num = 0;
     my $max = scalar @files;
     my @files_striped;
-    for my $file (@files) {
-        $num++;
-        # use only the first, the last and every 30th file to speed up initial graph
-        next if($num != 1 and $num != $max and $num%30 != 0);
-        push @files_striped, $file;
+    if($max < 300) {
+        @files_striped = @files;
+    } else {
+        for my $file (@files) {
+            $num++;
+            # use only the first, the last and every 30th file to speed up initial graph
+            next if($num != 1 and $num != $max and $num%30 != 0);
+            push @files_striped, $file;
+        }
     }
     while( my @chunk = splice( @files_striped, 0, 30 ) ) {
         my $joined = join(' ', @chunk);
