@@ -8,6 +8,7 @@ use Carp;
 use JSON::XS;
 use File::Slurp qw/read_file/;
 use IPC::Open3 qw/open3/;
+#use Thruk::Timer qw/timing_breakpoint/;
 
 =head1 NAME
 
@@ -59,6 +60,7 @@ sub index :Path :Args(0) :MyAction('AddSafeDefaults') {
     $c->stash->{title} = 'Top Statistics';
     $c->stash->{page}  = 'status';
     $c->stash->{hide_backends_chooser} = 1;
+    $c->stash->{no_auto_reload}        = 1;
 
     our $hosts_list = undef;
 
@@ -88,8 +90,8 @@ sub index :Path :Args(0) :MyAction('AddSafeDefaults') {
 =cut
 sub top_graph {
     my ( $self, $c ) = @_;
+    #&timing_breakpoint('top_graph()');
     $c->stash->{template} = 'omd_top.tt';
-    $c->stash->{'no_auto_reload'}      = 1;
     my $load_series = [
         { label => "load 1",  data =>  [] },
         { label => "load 5",  data =>  [] },
@@ -109,10 +111,12 @@ sub top_graph {
             push @files_striped, $file;
         }
     }
+    #&timing_breakpoint('files selected');
     # zgrep to 30 files each to reduce the number of forks
     while( my @chunk = splice( @files_striped, 0, 30 ) ) {
         my $joined = join(' ', @chunk);
         my $out = `LC_ALL=C zgrep -H -F -m 1 'load average:' $joined 2>/dev/null`;
+        #&timing_breakpoint('zgrep done');
         if(my @matches = $out =~ m/(\d+)\.log.*?:\s*top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/gmxo) {
             while( my @m = splice( @matches, 0, 7 ) ) {
                 my($time,$hour,$min,$sec,$l1,$l5,$l15) = (@m);
@@ -123,6 +127,7 @@ sub top_graph {
             }
         }
     }
+    #&timing_breakpoint('top_graph() done');
     $c->stash->{load_series} = $load_series;
 }
 
@@ -135,8 +140,8 @@ sub top_graph {
 =cut
 sub top_graph_details {
     my ( $self, $c ) = @_;
+    #&timing_breakpoint('top_graph_details()');
     $c->stash->{template} = 'omd_top_details.tt';
-    $c->stash->{'no_auto_reload'}      = 1;
     my @files = sort glob("$top_dir/*.log $top_dir/*.gz");
 
     my $t1 = $c->{'request'}->{'parameters'}->{'t1'};
@@ -171,10 +176,12 @@ sub top_graph_details {
         @file_list = @newfiles;
     }
 
+    #&timing_breakpoint('files selected');
     # now read all zip files at once
     my $proc_found = {};
     my $pattern    = _get_pattern($c);
     my $data       = _extract_top_data(\@file_list, undef, $pattern, $proc_found, $truncated);
+    #&timing_breakpoint('data extracted');
 
     # create series to draw
     my $mem_series = [
@@ -256,6 +263,7 @@ sub top_graph_details {
     $c->stash->{proc_cpu_series} = $proc_cpu_series;
     $c->stash->{proc_mem_series} = $proc_mem_series;
     $c->stash->{gearman_series}  = $gearman_series;
+    #&timing_breakpoint('top_graph_details() done');
     return;
 }
 
@@ -345,6 +353,7 @@ sub _extract_top_data {
             if($line =~ m/^(\w+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)/mxo) {
                 $gearman->{$1} = { worker => 0+$2, waiting => 0+$3, running => 0+$4 };
             }
+            next;
         }
 
         next if $skip_this_one;
@@ -371,32 +380,37 @@ sub _extract_top_data {
             # Memory
             elsif($line =~ m/^(KiB|)\s*Mem:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*buffers/mxo) {
                 my $factor = $1 eq 'KiB' ? 1024 : 1;
-                $cur->{'mem'}      = _normalize_mem($2, $line, $factor);
-                $cur->{'mem_used'} = _normalize_mem($3, $line, $factor);
-                $cur->{'buffers'}  = _normalize_mem($5, $line, $factor);
+                $cur->{'mem'}      = &_normalize_mem($2, $line, $factor);
+                $cur->{'mem_used'} = &_normalize_mem($3, $line, $factor);
+                $cur->{'buffers'}  = &_normalize_mem($5, $line, $factor);
             }
             # Swap / Cached
             elsif($line =~ m/^(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free(,|\.)\s*([\.\w]+)\s*cached/mxo) {
                 my $factor = $1 eq 'KiB' ? 1024 : 1;
-                $cur->{'swap'}      = _normalize_mem($2, $line, $factor);
-                $cur->{'swap_used'} = _normalize_mem($3, $line, $factor);
-                $cur->{'cached'}    = _normalize_mem($6, $line, $factor);
+                $cur->{'swap'}      = &_normalize_mem($2, $line, $factor);
+                $cur->{'swap_used'} = &_normalize_mem($3, $line, $factor);
+                $cur->{'cached'}    = &_normalize_mem($6, $line, $factor);
             }
         } else {
-            my($pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd) = split(/\s+/mxo, $line, 12);
-            next unless $cmd;
-            push @{$cur->{'raw'}}, [$pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd] if $with_raw;
+            #    0      1     2      3      4      5     6      7       8     9     10     11
+            #my($pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd) = ...
+            my @proc = split(/\s+/mxo, $line, 12);
+            next unless $proc[11];
+            push @{$cur->{'raw'}}, \@proc if $with_raw;
             my $key = 'other';
             for my $p (@{$pattern}) {
                 if($line =~ m|$p->[0]|mx) {
                     $key = $p->[1];
+                    last;
                 }
             }
-            $cur->{procs}->{$key}->{num}  += 1;
-            $cur->{procs}->{$key}->{cpu}  += $cpu;
-            $cur->{procs}->{$key}->{virt} += _normalize_mem($virt, $line);
-            $cur->{procs}->{$key}->{res}  += _normalize_mem($res, $line);
-            $cur->{procs}->{$key}->{mem}  += $mem;
+            $cur->{procs}->{$key} = {} unless defined $cur->{procs}->{$key};
+            my $procs = $cur->{procs}->{$key};
+            $procs->{num}  += 1;
+            $procs->{cpu}  += $proc[8];
+            $procs->{virt} += &_normalize_mem($proc[4], $line);
+            $procs->{res}  += &_normalize_mem($proc[5], $line);
+            $procs->{mem}  += $proc[9];
             $proc_found->{$key} = 1;
         }
     }
@@ -413,7 +427,7 @@ sub _normalize_mem {
     my($value, $line, $factor) = @_;
     $factor = 1 unless $factor;
 
-    if($value =~ m/^([\d\.]+)([a-zA-Z])$/mx) {
+    if($value =~ m/^([\d\.]+)([a-zA-Z])$/mxo) {
         $value = $1;
         my $unit = lc($2);
         if(   $unit eq 'k') { $value = $value * 1024; }
@@ -423,7 +437,7 @@ sub _normalize_mem {
             die("could not parse top data ($value) in line: $line\n");
         }
     }
-    if($value !~ m/^[\d\.]*$/mx) {
+    if($value !~ m/^[\d\.]*$/mxo) {
         die("could not parse top data ($value) in line: $line\n");
     }
     $value = $value * $factor;
