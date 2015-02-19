@@ -32,9 +32,6 @@
     </td>
   </tr>
 </table>
-[% IF truncated %]
-<div align="center"><br><div class="alert"><b>Limit reached:</b> Maximum timerange reached, please select smaller timeframe.</div></div>
-[% END %]
 <table border=0 cellpadding=0 cellspacing=0>
   <tr>
     <td valign=top>
@@ -135,7 +132,8 @@
 
 <script type="text/javascript">
 <!--
-var plots = [];
+var truncated = [% IF truncated %]true[% ELSE%]false[% END %];
+var plots     = [];
 jQuery().ready(function() {
     var labelWidth = 40;
     standard_xaxis = { mode: "time",
@@ -295,10 +293,10 @@ jQuery().ready(function() {
         legend:    standard_legend
     };
     var gearman_series = [% encode_json_obj(gearman_series) %];
+    var gearman_plot   = jQuery.plot('#gearman_graph', gearman_series, gearman_options);
+    gearman_plot.draw();
+    plots.push(gearman_plot);
     if(gearman_series[0].data.length > 0) {
-        var gearman_plot   = jQuery.plot('#gearman_graph', gearman_series, gearman_options);
-        gearman_plot.draw();
-        plots.push(gearman_plot);
         jQuery('#gearman_graph').show();
     } else {
         jQuery('#gearman_graph').hide();
@@ -318,7 +316,7 @@ jQuery().ready(function() {
                 if(e == '#cpu_graph' || e == '#pcpu_graph' || e == '#pmem_graph') {
                     // stacked graph would show wrong value
                     y = item.series.data[item.dataIndex][1];
-                    val = y+"%";
+                    val = Number(y).toFixed(1)+"%";
                 }
                 if(e == '#load_graph') {
                     val = y;
@@ -372,6 +370,13 @@ jQuery().ready(function() {
         /* enable zooming */
         jQuery(e).bind("plotselected", function (event, ranges) {
             croshair_skip_click = true;
+            if(truncated) {
+                /* zoom in with more details if current set is truncated */
+                var from = Math.floor(ranges.xaxis.from/1000);
+                var to   = Math.floor(ranges.xaxis.to/1000);
+                window.setTimeout("window_location_replace('omd.cgi?action=top_details&t1="+from+"&t2="+to+"')", 100);
+                return(false);
+            }
             jQuery.each(plots, function(_, plot) {
                 jQuery.each(plot.getXAxes(), function(_, axis) {
                     var opts = axis.options;

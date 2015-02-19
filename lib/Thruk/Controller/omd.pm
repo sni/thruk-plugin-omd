@@ -295,28 +295,36 @@ sub _extract_top_data {
 
     my $proc_started    = 0;
     my $gearman_started = 0;
+    my $skip_this_one   = 0;
     my $result          = {};
     my($cur, $gearman);
     my $last_hour = $startdate[2];
+    my $last_min  = -1;
     while(my $line = <$rdr>) {
         &_trim($line);
 
         if($line =~ m/^top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/mxo) {
-            if($cur) {
-                $result->{$cur->{time}} = $cur;
-                return($result) if $first_one_only;
-            }
+            if($cur) { $result->{$cur->{time}} = $cur; }
             $cur = { procs => {} };
             $cur->{'raw'} = [] if $with_raw;
             $cur->{'load1'}  = $4;
             $cur->{'load5'}  = $5;
             $cur->{'load15'} = $6;
+            $skip_this_one   = 0;
             my($hour,$min,$sec) = ($1,$2,$3);
             if($last_hour == 23 and $hour != 23) {
                 @startdate = localtime(POSIX::mktime(59, 59, 23, $startdate[3], $startdate[4], $startdate[5], $startdate[6], $startdate[7])+7500);
             }
             $cur->{'time'}   = POSIX::mktime($sec, $min, $hour, $startdate[3], $startdate[4], $startdate[5], $startdate[6], $startdate[7]);
+            if($first_one_only) {
+                if($last_min == $min) {
+                    $skip_this_one = 1;
+                    $cur           = undef;
+                    next;
+                }
+            }
             $last_hour       = $hour;
+            $last_min        = $min;
             $proc_started    = 0;
             $gearman_started = 0;
             if($gearman) {
@@ -337,6 +345,8 @@ sub _extract_top_data {
                 $gearman->{$1} = { worker => 0+$2, waiting => 0+$3, running => 0+$4 };
             }
         }
+
+        next if $skip_this_one;
 
         if(!$proc_started) {
             if($line =~ m/^PID/mxo) {
