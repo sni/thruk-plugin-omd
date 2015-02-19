@@ -83,6 +83,8 @@ sub index :Path :Args(0) :MyAction('AddSafeDefaults') {
 
 =head2 top_graph
 
+    entry page with overview graph
+
 =cut
 sub top_graph {
     my ( $self, $c ) = @_;
@@ -127,6 +129,8 @@ sub top_graph {
 
 =head2 top_graph_details
 
+    details graph for given timeperiod
+
 =cut
 sub top_graph_details {
     my ( $self, $c ) = @_;
@@ -149,18 +153,27 @@ sub top_graph_details {
         }
         push @file_list, $file;
         $files_read++;
+    }
 
-        # security limit
-        if($files_read > 500) {
-            $truncated = 1;
-            last;
+    my $num = scalar @file_list;
+    if($num > 500) {
+        $truncated = 1;
+        my $keep = int($num / 500);
+        my @newfiles;
+        my $x = 0;
+        for my $file (@file_list) {
+            $x++;
+            if($x == 1 || $x == $num || $x % $keep == 0) {
+                push @newfiles, $file;
+            }
         }
+        @file_list = @newfiles;
     }
 
     # now read all zip files at once
     my $proc_found = {};
     my $pattern    = _get_pattern($c);
-    my $data       = _extract_top_data(\@file_list, undef, $pattern, $proc_found);
+    my $data       = _extract_top_data(\@file_list, undef, $pattern, $proc_found, $truncated);
 
     # create series to draw
     my $mem_series = [
@@ -271,7 +284,7 @@ sub top_graph_data {
 
 ##########################################################
 sub _extract_top_data {
-    my($files, $with_raw, $pattern, $proc_found) = @_;
+    my($files, $with_raw, $pattern, $proc_found, $first_one_only) = @_;
 
     my($pid, $wtr, $rdr, @lines);
     $pid = open3($wtr, $rdr, $rdr, 'zcat', @{$files});
@@ -289,7 +302,10 @@ sub _extract_top_data {
         &_trim($line);
 
         if($line =~ m/^top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/mxo) {
-            if($cur) { $result->{$cur->{time}} = $cur; }
+            if($cur) {
+                $result->{$cur->{time}} = $cur;
+                return($result) if $first_one_only;
+            }
             $cur = { procs => {} };
             $cur->{'raw'} = [] if $with_raw;
             $cur->{'load1'}  = $4;
