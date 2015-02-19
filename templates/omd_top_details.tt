@@ -190,7 +190,7 @@ jQuery().ready(function() {
         xaxis: standard_xaxis,
         yaxes: [{
                    min: 0,
-                   //max: 100,
+                   max: 100,
                    tickFormatter: function(val, axis) { return(val < axis.max ? val : "%"); },
                    labelWidth: labelWidth
         }],
@@ -301,21 +301,15 @@ jQuery().ready(function() {
         /* graph hover */
         jQuery(e).bind("plothover", function (event, pos, item) {
             if (item) {
-                var x = new Date(item.datapoint[0]).toLocaleString(),
-                    y = item.datapoint[1];
-                var val = y+"MB";
-                if(e == '#pcpu_graph' || e == '#pmem_graph') {
-                    y = item.series.data[item.dataIndex][1];
-                    val = Number(y).toFixed(1)+"%";
-                }
+                var d = new Date(item.datapoint[0]).toLocaleString();
                 var tooltip;
-                if(e == '#load_graph')    { tooltip = getTooltipFromSeries(x, load_series,    item.dataIndex                )};
-                if(e == '#cpu_graph')     { tooltip = getTooltipFromSeries(x, cpu_series,     item.dataIndex,  "%"          )};
-                if(e == '#mem_graph')     { tooltip = getTooltipFromSeries(x, mem_series,     item.dataIndex, "MB"          )};
-                if(e == '#swap_graph')    { tooltip = getTooltipFromSeries(x, swap_series,    item.dataIndex, "MB"          )};
-                if(e == '#pcpu_graph')    { tooltip = getTooltipFromSeries(x, pcpu_series,    item.dataIndex,  "%", true, 1 )};
-                if(e == '#pmem_graph')    { tooltip = getTooltipFromSeries(x, pmem_series,    item.dataIndex, "MB", true, 1 )};
-                if(e == '#gearman_graph') { tooltip = getTooltipFromSeries(x, gearman_series, item.dataIndex                )};
+                if(e == '#load_graph')    { tooltip = getTooltipFromSeries(d, load_series,    item.dataIndex                )};
+                if(e == '#cpu_graph')     { tooltip = getTooltipFromSeries(d, cpu_series,     item.dataIndex,  "%"          )};
+                if(e == '#mem_graph')     { tooltip = getTooltipFromSeries(d, mem_series,     item.dataIndex, "MB"          )};
+                if(e == '#swap_graph')    { tooltip = getTooltipFromSeries(d, swap_series,    item.dataIndex, "MB"          )};
+                if(e == '#pcpu_graph')    { tooltip = getTooltipFromSeries(d, pcpu_series,    item.dataIndex,  "%", true, 1 )};
+                if(e == '#pmem_graph')    { tooltip = getTooltipFromSeries(d, pmem_series,    item.dataIndex, "MB", true, 1 )};
+                if(e == '#gearman_graph') { tooltip = getTooltipFromSeries(d, gearman_series, item.dataIndex                )};
                 jQuery("#tooltip").html(tooltip)
                                   .css({top: item.pageY+5, left: item.pageX+5})
                                   .fadeIn(200);

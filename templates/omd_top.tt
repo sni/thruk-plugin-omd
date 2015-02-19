@@ -79,10 +79,9 @@ jQuery().ready(function() {
     /* add zooming and hover */
     jQuery('#load_graph').bind("plothover", function (event, pos, item) {
         if (item) {
-            var x = new Date(item.datapoint[0]),
-                y = item.datapoint[1];
-            var val = y;
-            jQuery("#tooltip").html(x + ": " + item.series.label + " = " + val)
+            var date    = new Date(item.datapoint[0]).toLocaleString(),
+            var tooltip = getTooltipFromSeries(date, load_series, item.dataIndex);
+            jQuery("#tooltip").html(tooltip)
                               .css({top: item.pageY+5, left: item.pageX+5})
                               .fadeIn(200);
         } else {
@@ -96,6 +95,19 @@ jQuery().ready(function() {
         window.location = 'omd.cgi?action=top_details&t1='+Math.floor(ranges.xaxis.from/1000)+'&t2='+Math.ceil(ranges.xaxis.to/1000);
     });
 });
+
+function getTooltipFromSeries(date, series, index, unit, skipEmpty, toFixed) {
+    var labels = [];
+    jQuery.each(series, function(_, s) {
+        if(!skipEmpty || s.data[index][1] != 0) {
+            var val = s.data[index][1];
+            if(toFixed != undefined) { val = Number(val).toFixed(toFixed); }
+            labels.push(s.label + ": " + val+(unit ? unit : ''));
+        }
+    });
+    var tooltip = date + ": "+labels.join(", ");
+    return(tooltip);
+}
 
 -->
 </script>

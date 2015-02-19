@@ -109,6 +109,7 @@ sub top_graph {
             push @files_striped, $file;
         }
     }
+    # zgrep to 30 files each to reduce the number of forks
     while( my @chunk = splice( @files_striped, 0, 30 ) ) {
         my $joined = join(' ', @chunk);
         my $out = `LC_ALL=C zgrep -H -F -m 1 'load average:' $joined 2>/dev/null`;
