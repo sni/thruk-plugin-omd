@@ -125,6 +125,8 @@
 <!--
 var truncated = [% IF truncated %]true[% ELSE%]false[% END %];
 var plots     = [];
+var croshair_locked     = false;
+var croshair_skip_click = false;
 jQuery().ready(function() {
     var labelWidth = 40;
     standard_xaxis = { mode: "time",
@@ -295,8 +297,6 @@ jQuery().ready(function() {
 
 
     /* add zooming and hover */
-    var croshair_locked     = false;
-    var croshair_skip_click = false;
     jQuery.each(['#mem_graph', '#cpu_graph', '#swap_graph', '#load_graph', '#pcpu_graph', '#pmem_graph', '#gearman_graph'], function(i, e) {
         /* graph hover */
         jQuery(e).bind("plothover", function (event, pos, item) {
@@ -350,11 +350,11 @@ jQuery().ready(function() {
                     y:      item.datapoint[1],
                     y1:     item.datapoint[1],
                 };
+                croshair_locked = true;
                 jQuery.each(plots, function(_, plot) {
-                    croshair_locked = true;
                     plot.lockCrosshair(itempos);
-                    updateDetailsTable(item.dataIndex, true);
                 });
+                updateDetailsTable(item.dataIndex, true);
             }
         });
 
@@ -408,12 +408,12 @@ function zoomOut(plot) {
         opts.min = undefined;
         opts.max = undefined;
     });
+    croshair_locked = false;
+    plot.unlockCrosshair();
     try {
         plot.resize();
         plot.setupGrid();
     } catch(e) {}
-    croshair_locked = false;
-    plot.unlockCrosshair();
     plot.draw();
     jQuery('#raw_top').find("tr:gt(0)").remove();
     jQuery('#raw_top_div').css({'display': 'none'});
