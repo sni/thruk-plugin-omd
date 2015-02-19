@@ -53,7 +53,7 @@ sub omd_cgi : Path('/thruk/cgi-bin/omd.cgi') {
 =head2 index
 
 =cut
-sub index :Path :Args(0) :MyAction('AddCachedDefaults') {
+sub index :Path :Args(0) :MyAction('AddSafeDefaults') {
     my ( $self, $c ) = @_;
 
     $c->stash->{title}  = 'Top Statistics';
