@@ -129,6 +129,7 @@ sub top_graph {
     }
     #&timing_breakpoint('top_graph() done');
     $c->stash->{load_series} = $load_series;
+    return;
 }
 
 ##########################################################
