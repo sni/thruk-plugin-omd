@@ -4,9 +4,10 @@ use Test::More;
 use Data::Dumper;
 
 eval "use Test::Cmd";
-plan tests => 3;
+plan tests => 4;
 
 use_ok('Thruk::Controller::omd');
+use_ok('Thruk::OMD::Top::Parser::LinuxTop');
 
 ###########################################################
 test_file('t/data/1421945063.debian6.txt', {
@@ -57,7 +58,7 @@ test_file('t/data/1421945063.ubuntu14-04.txt', {
 sub test_file {
     my($file, $expected) = @_;
     `cat $file | gzip > $file.gz`;
-    my $d = Thruk::Controller::omd::_extract_top_data([$file.'.gz']);
+    my $d = Thruk::OMD::Top::Parser::LinuxTop::_extract_top_data([$file.'.gz']);
     unlink($file.'.gz');
     my $data = $d->{(keys %{$d})[0]};
     delete $data->{'time'};

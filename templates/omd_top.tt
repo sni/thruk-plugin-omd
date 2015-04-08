@@ -27,6 +27,25 @@
       </div>
     </td>
     <td align="right" valign="bottom" width="20%">
+      [% IF folders.size > 1 %]
+      <form method="GET" action="omd.cgi">
+      <table border="0" class='optBox'>
+        <tr>
+          <td valign="top" align="left" class='optBoxItem' style="white-space: nowrap;">Data Source:</td>
+          <td valign="top" align="left" class='optBoxItem'>
+            <select name='folder'>
+              [% FOREACH f = folders %]
+              <option value="[% f.dir %]"[% IF f.dir == folder %] selected[% END %]>[% f.dir %]</option>
+              [% END %]
+            </select>
+          </td>
+          <td valign="top" align="left" class='optBoxItem'>
+            <input type='submit' value='Update'>
+          </td>
+        </tr>
+      </table>
+      </form>
+      [% END %]
       [% PROCESS _help.tt topic = "omd" %]
     </td>
   </tr>
@@ -92,7 +111,7 @@ jQuery().ready(function() {
     /* enable zooming */
     jQuery('#load_graph').bind("plotselected", function (event, ranges) {
         if(ranges == null) { return; }
-        window.location = 'omd.cgi?action=top_details&t1='+Math.floor(ranges.xaxis.from/1000)+'&t2='+Math.ceil(ranges.xaxis.to/1000);
+        window.location = 'omd.cgi?action=top_details&t1='+Math.floor(ranges.xaxis.from/1000)+'&t2='+Math.ceil(ranges.xaxis.to/1000)+'&folder=[% folder %]';
     });
 });
 

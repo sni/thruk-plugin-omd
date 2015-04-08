@@ -44,6 +44,14 @@ a time range you want to examine in detail.
 On the second page, you can select datapoints to fetch the detailed top data which then
 can be sorted by clicking on the table header.
 
+## Extending by own Parsers
+
+The default parser uses linux top data as input source, but it is possible to write own parser.
+Just add a new input source to your `thruk_local.conf`:
+
+    omd_top_extra_dir = WinCPU=var/cputop
+
+Then implement a OMD/Top/Parser/WinCPU.pm based on the existing LinuxTop.pm.
 
 ## License
 
