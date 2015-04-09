@@ -98,7 +98,15 @@ sub index :Path :Args(0) :MyAction('AddSafeDefaults') {
     $c->stash->{folders} = $folders;
     $c->stash->{folder}  = $c->{'request'}->{'parameters'}->{'folder'} || $top_dir;
     if(!$folder_hash->{$c->stash->{folder}}) { $c->stash->{folder} = $top_dir; }
+    if(!$folder_hash->{$c->stash->{folder}} && scalar @{$folders} > 0) { $c->stash->{folder} = $folders->[0]->{dir}; }
     $c->stash->{parser}  = $folder_hash->{$c->stash->{folder}};
+
+    if(scalar @{$folders} == 0 || !$c->stash->{parser}) {
+        $c->stash->{folders}  = [];
+        $c->stash->{template} = 'omd_top.tt';
+        return;
+    }
+
     my $class   = 'Thruk::OMD::Top::Parser::'.$c->stash->{parser};
     my $require = $class;
     $require =~ s/::/\//gmx;

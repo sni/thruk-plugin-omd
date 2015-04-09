@@ -51,6 +51,9 @@
   </tr>
 </table>
 
+[% IF folders.size == 0 %]
+<br><div class="alert"><b>No Input Folders:</b> Make sure you have some input folders defined and at least one of them contains data.</div>
+[% ELSE %]
 <div id='tooltip'></div>
 <div id="load_graph" style="height: 200px; width: 1000px;"></div>
 <div style="text-align: center; width: 1000px; margin-top: 15px;">select a range to display details</div>
@@ -130,3 +133,4 @@ function getTooltipFromSeries(date, series, index, unit, skipEmpty, toFixed) {
 
 -->
 </script>
+[% END %]
