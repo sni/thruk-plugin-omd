@@ -72,18 +72,28 @@ sub index :Path :Args(0) :MyAction('AddSafeDefaults') {
 
     # get input folders
     my $default_parser = 'LinuxTop';
-    my $folder_hash = { $top_dir => $default_parser };
-    my $folders = [{ parser => $default_parser, 'dir' => $top_dir }];
+    my $folder_hash    = {};
+    my $folders        = [];
+    if(-d $top_dir.'/.') {
+        $folder_hash->{$top_dir} = $default_parser;
+    }
     if($c->config->{'omd_top_extra_dir'}) {
         for my $dir (@{Thruk::Utils::list($c->config->{'omd_top_extra_dir'})}) {
             my($parser, $folder) = split/\s*=\s*/mx, $dir;
             if(!$folder) { $folder = $parser; $parser = $default_parser; }
+            next unless -d $folder.'/.';
             my @subdirs = glob($folder.'/*');
             for my $sub (sort @subdirs) {
-                push @{$folders}, { parser => $parser, 'dir' => $sub };
+                my $display = $sub;
+                $display =~ s|.*/||mx;
+                push @{$folders}, { parser => $parser, 'dir' => $sub, display => $display };
                 $folder_hash->{$sub} = $parser;
             }
         }
+    }
+    $folders = Thruk::Backend::Manager->_sort($folders, 'display');
+    if(-d $top_dir.'/.') {
+        unshift @{$folders}, { parser => $default_parser, 'dir' => $top_dir, 'display' => 'Monitoring Server' };
     }
     $c->stash->{folders} = $folders;
     $c->stash->{folder}  = $c->{'request'}->{'parameters'}->{'folder'} || $top_dir;

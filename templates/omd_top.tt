@@ -35,7 +35,7 @@
           <td valign="top" align="left" class='optBoxItem'>
             <select name='folder'>
               [% FOREACH f = folders %]
-              <option value="[% f.dir %]"[% IF f.dir == folder %] selected[% END %]>[% f.dir %]</option>
+              <option value="[% f.dir %]"[% IF f.dir == folder %] selected[% END %]>[% f.display %]</option>
               [% END %]
             </select>
           </td>
