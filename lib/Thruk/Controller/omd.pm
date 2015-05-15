@@ -1,5 +1,4 @@
 package Thruk::Controller::omd;
-use parent 'Catalyst::Controller';
 
 use strict;
 use warnings;
@@ -12,41 +11,33 @@ use IPC::Open3 qw/open3/;
 
 =head1 NAME
 
-Thruk::Controller::omd - Catalyst Controller
+Thruk::Controller::omd - Thruk Controller
 
 =head1 DESCRIPTION
 
-Catalyst Controller.
+Thruk Controller.
 
 =head1 METHODS
 
 =cut
 
-######################################
-# add new menu item
-Thruk::Utils::Menu::insert_item('Reports', {
-                                    'href'  => '/thruk/cgi-bin/omd.cgi',
-                                    'name'  => 'OMD Top',
-                         });
-
-my $top_dir    = defined $ENV{'OMD_ROOT'} ? $ENV{'OMD_ROOT'}.'/var/top' : 'var/top';
-my $pluginname = 'omd';
-eval { # not available in older thruk releases
-    $pluginname = Thruk::Utils::get_plugin_name(__FILE__, __PACKAGE__);
-};
+my $top_dir = defined $ENV{'OMD_ROOT'} ? $ENV{'OMD_ROOT'}.'/var/top' : 'var/top';
 
 ######################################
 
-=head2 omd_cgi
+=head2 add_routes
 
 page: /thruk/cgi-bin/omd.cgi
 
 =cut
-sub omd_cgi : Path('/thruk/cgi-bin/omd.cgi') {
-    my ( $self, $c ) = @_;
-    return if defined $c->{'canceled'};
-    $c->stash->{plugin} = $pluginname;
-    return $c->detach('/omd/index');
+sub add_routes {
+    my($self, $app, $routes) = @_;
+    $routes->{'/thruk/cgi-bin/omd.cgi'} = 'Thruk::Controller::omd::index';
+    Thruk::Utils::Menu::insert_item('Reports', {
+                                        'href'  => '/thruk/cgi-bin/omd.cgi',
+                                        'name'  => 'OMD Top',
+    });
+    return;
 }
 
 ##########################################################
@@ -54,8 +45,10 @@ sub omd_cgi : Path('/thruk/cgi-bin/omd.cgi') {
 =head2 index
 
 =cut
-sub index :Path :Args(0) :MyAction('AddSafeDefaults') {
-    my ( $self, $c ) = @_;
+sub index {
+    my($c) = @_;
+
+    return unless Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_SAFE_DEFAULTS);
 
     $c->stash->{title} = 'Top Statistics';
     $c->stash->{page}  = 'status';
@@ -137,7 +130,5 @@ This library is free software, you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
-
-__PACKAGE__->meta->make_immutable;
 
 1;
