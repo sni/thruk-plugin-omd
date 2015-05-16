@@ -21,7 +21,8 @@ Thruk Controller.
 
 =cut
 
-my $top_dir = defined $ENV{'OMD_ROOT'} ? $ENV{'OMD_ROOT'}.'/var/top' : 'var/top';
+my $top_dir    = defined $ENV{'OMD_ROOT'} ? $ENV{'OMD_ROOT'}.'/var/top' : 'var/top';
+my $pluginname = Thruk::Utils::get_plugin_name(__FILE__, __PACKAGE__);
 
 ######################################
 
@@ -50,10 +51,11 @@ sub index {
 
     return unless Thruk::Action::AddDefaults::add_defaults($c, Thruk::ADD_SAFE_DEFAULTS);
 
-    $c->stash->{title} = 'Top Statistics';
-    $c->stash->{page}  = 'status';
+    $c->stash->{title}                 = 'Top Statistics';
+    $c->stash->{page}                  = 'status';
     $c->stash->{hide_backends_chooser} = 1;
     $c->stash->{no_auto_reload}        = 1;
+    $c->stash->{plugin}                = $pluginname;
 
     our $hosts_list = undef;
 
