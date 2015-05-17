@@ -244,8 +244,7 @@ sub top_graph_data {
     my $data = $d->{$time};
     $data->{'file'}     = $lastfile;
     if(defined $ENV{'OMD_ROOT'}) { my $root = $ENV{'OMD_ROOT'}; $data->{'file'} = s|$root||gmx; }
-    $c->stash->{'json'} = $data;
-    return $c->forward('Thruk::View::JSON');
+    return $c->render(json => $data);
 }
 
 ##########################################################
