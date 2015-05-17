@@ -91,7 +91,7 @@ sub index {
         unshift @{$folders}, { parser => $default_parser, 'dir' => $top_dir, 'display' => 'Monitoring Server' };
     }
     $c->stash->{folders} = $folders;
-    $c->stash->{folder}  = $c->{'request'}->{'parameters'}->{'folder'} || $top_dir;
+    $c->stash->{folder}  = $c->req->parameters->{'folder'} || $top_dir;
     if(!$folder_hash->{$c->stash->{folder}}) { $c->stash->{folder} = $top_dir; }
     if(!$folder_hash->{$c->stash->{folder}} && scalar @{$folders} > 0) { $c->stash->{folder} = $folders->[0]->{dir}; }
     $c->stash->{parser}  = $folder_hash->{$c->stash->{folder}};
@@ -109,7 +109,7 @@ sub index {
     $class->import;
     my $parser = $class->new($c->stash->{folder});
 
-    my $action = $c->{'request'}->{'parameters'}->{'action'} || '';
+    my $action = $c->req->parameters->{'action'} || '';
     if($action eq 'top_details') {
         return $parser->top_graph_details($c);
     }

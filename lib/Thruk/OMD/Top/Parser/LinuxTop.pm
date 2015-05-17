@@ -101,8 +101,8 @@ sub top_graph_details {
     $c->stash->{template} = 'omd_top_details.tt';
     my @files = sort glob($self->{'folder'}.'/*.log '.$self->{'folder'}.'/*.gz');
 
-    my $t1 = $c->{'request'}->{'parameters'}->{'t1'};
-    my $t2 = $c->{'request'}->{'parameters'}->{'t2'};
+    my $t1 = $c->req->parameters->{'t1'};
+    my $t2 = $c->req->parameters->{'t2'};
 
     # get all files which are matching the timeframe
     my $truncated  = 0;
@@ -232,7 +232,7 @@ sub top_graph_details {
 sub top_graph_data {
     my ( $self, $c ) = @_;
     my @files = sort glob($self->{'folder'}.'/*.log '.$self->{'folder'}.'/*.gz');
-    my $time = $c->{'request'}->{'parameters'}->{'time'};
+    my $time = $c->req->parameters->{'time'};
     my $lastfile;
     for my $file (@files) {
         $file =~ m/\/(\d+)\./mxo;
