@@ -353,6 +353,7 @@ sub _extract_top_data {
             #my($pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd) = ...
             my @proc = split(/\s+/mxo, $line, 12);
             next unless $proc[11];
+            next if $proc[0] eq 'PID';
             push @{$cur->{'raw'}}, \@proc if $with_raw;
             my $key = 'other';
             for my $p (@{$pattern}) {
