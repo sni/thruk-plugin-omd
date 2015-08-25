@@ -102,13 +102,7 @@ sub index {
         return;
     }
 
-    my $class   = 'Thruk::OMD::Top::Parser::'.$c->stash->{parser};
-    my $require = $class;
-    $require =~ s/::/\//gmx;
-    require $require . ".pm";
-    $class->import;
-    my $parser = $class->new($c->stash->{folder});
-
+    my $parser = _parser($c);
     my $action = $c->req->parameters->{'action'} || '';
     if($action eq 'top_details') {
         return $parser->top_graph_details($c);
@@ -118,6 +112,18 @@ sub index {
     }
 
     return $parser->top_graph($c);
+}
+
+##########################################################
+sub _parser {
+    my($c) = @_;
+    my $class   = 'Thruk::OMD::Top::Parser::'.$c->stash->{parser};
+    my $require = $class;
+    $require =~ s/::/\//gmx;
+    require $require . ".pm";
+    $class->import;
+    my $parser = $class->new($c->stash->{folder});
+    return($parser);
 }
 
 ##########################################################
