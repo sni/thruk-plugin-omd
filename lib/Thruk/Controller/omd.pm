@@ -24,23 +24,6 @@ Thruk Controller.
 my $top_dir    = defined $ENV{'OMD_ROOT'} ? $ENV{'OMD_ROOT'}.'/var/top' : 'var/top';
 my $pluginname = Thruk::Utils::get_plugin_name(__FILE__, __PACKAGE__);
 
-######################################
-
-=head2 add_routes
-
-page: /thruk/cgi-bin/omd.cgi
-
-=cut
-sub add_routes {
-    my($self, $app, $routes) = @_;
-    $routes->{'/thruk/cgi-bin/omd.cgi'} = 'Thruk::Controller::omd::index';
-    Thruk::Utils::Menu::insert_item('Reports', {
-                                        'href'  => '/thruk/cgi-bin/omd.cgi',
-                                        'name'  => 'OMD Top',
-    });
-    return;
-}
-
 ##########################################################
 
 =head2 index
