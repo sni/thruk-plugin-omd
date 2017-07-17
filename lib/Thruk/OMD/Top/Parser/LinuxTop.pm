@@ -341,12 +341,25 @@ sub _extract_top_data {
                 $cur->{'mem_used'} = &_normalize_mem($3, $factor);
                 $cur->{'buffers'}  = &_normalize_mem($5, $factor);
             }
+            # Memory rhel7 format
+            elsif($line =~ m/^(KiB|)\s*Mem\s*:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*buf/mxo) {
+                my $factor = $1 eq 'KiB' ? 1024 : 1;
+                $cur->{'mem'}      = &_normalize_mem($2, $factor);
+                $cur->{'mem_used'} = &_normalize_mem($4, $factor);
+                $cur->{'buffers'}  = &_normalize_mem($5, $factor);
+            }
             # Swap / Cached
             elsif($line =~ m/^(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free(,|\.)\s*([\.\w]+)\s*cached/mxo) {
                 my $factor = $1 eq 'KiB' ? 1024 : 1;
                 $cur->{'swap'}      = &_normalize_mem($2, $factor);
                 $cur->{'swap_used'} = &_normalize_mem($3, $factor);
                 $cur->{'cached'}    = &_normalize_mem($6, $factor);
+            }
+            # Swap / Cached rhel7 format
+            elsif($line =~ m/^(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*used(,|\.)/mxo) {
+                my $factor = $1 eq 'KiB' ? 1024 : 1;
+                $cur->{'swap'}      = &_normalize_mem($2, $factor);
+                $cur->{'swap_used'} = &_normalize_mem($4, $factor);
             }
         } else {
             #    0      1     2      3      4      5     6      7       8     9     10     11

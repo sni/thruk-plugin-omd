@@ -4,7 +4,7 @@ use Test::More;
 use Data::Dumper;
 
 eval "use Test::Cmd";
-plan tests => 4;
+plan tests => 5;
 
 use_ok('Thruk::Controller::omd');
 use_ok('Thruk::OMD::Top::Parser::LinuxTop');
@@ -52,6 +52,27 @@ test_file('t/data/1421945063.ubuntu14-04.txt', {
             'swap'      => 19338,
             'swap_used' => 784,
             'procs'     => { 'other' => { 'cpu' => '48.8', 'num' => 3, 'mem' => '6.6', 'res' => 0, 'virt' => 2 } },
+});
+
+test_file('t/data/1421945063.rhel7.txt', {
+            'num'       => '216',
+            'load1'     => '0.55',
+            'load5'     => '1.10',
+            'load15'    => '0.91',
+            'cpu_us'    => '4.1',
+            'cpu_sy'    => '1.2',
+            'cpu_ni'    => '0.0',
+            'cpu_id'    => '94.3',
+            'cpu_wa'    => '0.1',
+            'cpu_hi'    => '0.0',
+            'cpu_si'    => '0.3',
+            'cpu_st'    => '0.0',
+            'mem_used'  => 2541,
+            'mem'       => 7806,
+            'buffers'   => 1984,
+            'swap'      => 2047,
+            'swap_used' => 596,
+            'procs'     => { 'other' => { 'cpu' => '156', 'num' => 9, 'mem' => '17.1', 'res' => 1016, 'virt' => 1 } },
 });
 
 ###########################################################
