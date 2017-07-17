@@ -3,3 +3,4 @@ down performance problems on your monitoring host.
 Read more about this plugin on https://github.com/sni/thruk-plugin-omd
 
 Url: omd.cgi
+Version: 1.0.0
