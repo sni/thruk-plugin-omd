@@ -25,6 +25,7 @@
     <td align="center" valign="top" width="60%">
       <div align="center" class='dataTitle'>
         Top Reporting Overview
+        [% IF c.req.parameters.defined("pid") %]<br><span class="hint">PID: [% c.req.parameters.pid %] / [% format_date(t1, datetime_format) %] - [% format_date(t2, datetime_format) %]</span>[% END %]
       </div>
     </td>
     <td align="right" valign="bottom" width="20%">
@@ -374,7 +375,11 @@ jQuery().ready(function() {
                 /* zoom in with more details if current set is truncated */
                 var from = Math.floor(ranges.xaxis.from/1000);
                 var to   = Math.floor(ranges.xaxis.to/1000);
-                window.setTimeout("window_location_replace('omd.cgi?action=top_details&t1="+from+"&t2="+to+"&folder=[% folder %]')", 100);
+                var pid  = "";
+                [% IF c.req.parameters.defined("pid") %]
+                pid  = '&pid='+[% c.req.parameters.pid %];
+                [% END %]
+                window.setTimeout("window_location_replace('omd.cgi?action=top_details&t1="+from+"&t2="+to+"&folder=[% folder %]"+pid+"')", 100);
                 return(false);
             }
             jQuery.each(plots, function(name, plot) {
@@ -491,12 +496,18 @@ function fetchTopDataDo() {
         url: url_prefix + 'cgi-bin/omd.cgi?action=top_data&time='+Math.floor(updateDetailsTableTimestamp/1000)+"&folder=[% folder %]",
         type: 'POST',
         success: function(data) {
+            removeParams['pid'] = true;
+            var uri = 'omd.cgi?action=top_details&folder=[% folder %]&expand=1&time='+Math.floor(updateDetailsTableTimestamp/1000);
             if(data && data.raw) {
                 jQuery('#raw_top').find("tr:gt(0)").remove();
                 jQuery.each(data.raw, function(_, row) {
                     var newRow = '<tr>';
-                    jQuery.each(row, function(_, cell) {
-                        newRow += '<td>'+cell+'<\/td>';
+                    jQuery.each(row, function(i, cell) {
+                        if(i == 0) {
+                            newRow += '<td><a href="'+uri+'&pid='+cell+'">'+cell+'<\/a><\/td>';
+                        } else {
+                            newRow += '<td>'+cell+'<\/td>';
+                        }
                     });
                     newRow += '<\/tr>';
                     jQuery('#raw_top tbody').append(newRow);

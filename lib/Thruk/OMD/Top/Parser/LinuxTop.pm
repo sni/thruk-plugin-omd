@@ -101,13 +101,86 @@ sub top_graph_details {
     $c->stash->{template} = 'omd_top_details.tt';
     my @files = sort glob($self->{'folder'}.'/*.log '.$self->{'folder'}.'/*.gz');
 
-    my $t1 = $c->req->parameters->{'t1'};
-    my $t2 = $c->req->parameters->{'t2'};
+    my $t1  = $c->req->parameters->{'t1'};
+    my $t2  = $c->req->parameters->{'t2'};
+    my $pid = $c->req->parameters->{'pid'};
+    my $pattern = _get_pattern($c);
+
+    if($pid) {
+        $pattern = [
+            [$pid, "Pid: $pid"],
+        ];
+    }
 
     # get all files which are matching the timeframe
     my $truncated  = 0;
     my $files_read = 0;
     my @file_list;
+    if($pid && $c->req->parameters->{'expand'}) {
+        # get all files with that pid, expand time range to start and end of that pid
+        my $min   = 0;
+        my $max   = scalar @files - 1;
+        my $time  = $c->req->parameters->{'time'};
+        my $start = 0;
+        for my $file (@files) {
+            $file =~ m/\/(\d+)\./mxo;
+            last if $1 > $time;
+            $start++;
+        }
+
+        my $file = $files[$start];
+        my $out = `LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null`;
+        if(!$out) {
+            $start--;
+        }
+
+        my $x = $start;
+        # find first occurance of pid
+        while(1) {
+            my $file = $files[$x];
+            $file =~ m/\/(\d+)\./mxo;
+            my $time = $1;
+            my $out = `LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null`;
+            if($out) {
+                $max = $x;
+            } else {
+                $min = $x;
+            }
+            $x = $min + int(($max-$min) / 2);
+            if($min == $x || $max == $x) {
+                if($min > 0) { $min--; }
+                $files[$min] =~ m/\/(\d+)\./mxo;
+                $t1 = $1;
+                last;
+            }
+        }
+
+        # find last occurance of pid
+        $min = 0;
+        $max = scalar @files - 1;
+        $x   = $start;
+        while(1) {
+            my $file = $files[$x];
+            $file =~ m/\/(\d+)\./mxo;
+            my $time = $1;
+            my $out = `LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null`;
+            if($out) {
+                $min = $x;
+            } else {
+                $max = $x;
+            }
+            $x = $min + int(($max-$min) / 2);
+            if($min == $x || $max == $x) {
+                if($max < scalar @files -1) { $max++; }
+                $files[$max] =~ m/\/(\d+)\./mxo;
+                $t2 = $1;
+                last;
+            }
+        }
+        $c->stash->{'t1'} = $t1;
+        $c->stash->{'t2'} = $t2;
+    }
+
     for my $file (@files) {
         $file =~ m/\/(\d+)\./mxo;
         my $time = $1;
@@ -117,7 +190,6 @@ sub top_graph_details {
         push @file_list, $file;
         $files_read++;
     }
-
     my $num = scalar @file_list;
     if($num > 500) {
         $truncated = 1;
@@ -136,8 +208,7 @@ sub top_graph_details {
     #&timing_breakpoint('files selected');
     # now read all zip files at once
     my $proc_found = {};
-    my $pattern    = _get_pattern($c);
-    my $data       = _extract_top_data(\@file_list, undef, $pattern, $proc_found, $truncated);
+    my $data       = _extract_top_data(\@file_list, undef, $pattern, $proc_found, $truncated, $pid);
     #&timing_breakpoint('data extracted');
 
     # create series to draw
@@ -249,7 +320,7 @@ sub top_graph_data {
 
 ##########################################################
 sub _extract_top_data {
-    my($files, $with_raw, $pattern, $proc_found, $first_one_only) = @_;
+    my($files, $with_raw, $pattern, $proc_found, $first_one_only, $filter) = @_;
 
     my($pid, $wtr, $rdr, @lines);
     $pid = open3($wtr, $rdr, $rdr, 'zcat', @{$files});
@@ -367,6 +438,7 @@ sub _extract_top_data {
             my @proc = split(/\s+/mxo, $line, 12);
             next unless $proc[11];
             next if $proc[0] eq 'PID';
+            next if $filter && $filter != $proc[0];
             push @{$cur->{'raw'}}, \@proc if $with_raw;
             my $key = 'other';
             for my $p (@{$pattern}) {
