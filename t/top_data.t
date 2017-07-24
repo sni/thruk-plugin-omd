@@ -6,7 +6,6 @@ use Data::Dumper;
 eval "use Test::Cmd";
 plan tests => 5;
 
-use_ok('Thruk::Controller::omd');
 use_ok('Thruk::OMD::Top::Parser::LinuxTop');
 
 ###########################################################
