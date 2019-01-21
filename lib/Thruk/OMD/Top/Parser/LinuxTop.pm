@@ -314,7 +314,7 @@ sub top_graph_data {
     my $d    = _extract_top_data([$lastfile], 1);
     my $data = $d->{$time};
     $data->{'file'}     = $lastfile;
-    if(defined $ENV{'OMD_ROOT'}) { my $root = $ENV{'OMD_ROOT'}; $data->{'file'} = s|$root||gmx; }
+    if(defined $ENV{'OMD_ROOT'}) { my $root = $ENV{'OMD_ROOT'}; $data->{'file'} =~ s|$root||gmx; }
     return $c->render(json => $data);
 }
 
