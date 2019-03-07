@@ -1,15 +1,28 @@
 use strict;
 use warnings;
 use Test::More;
-use Data::Dumper;
 
-eval "use Test::Cmd";
-plan tests => 5;
-
-use_ok('Thruk::OMD::Top::Parser::LinuxTop');
+BEGIN {
+    my $tests = 4;
+    plan tests => $tests;
+}
 
 ###########################################################
-test_file('t/data/1421945063.debian6.txt', {
+# test modules
+unshift @INC, 'plugins/plugins-available/omd/lib';
+
+SKIP: {
+    skip 'external tests', 1 if defined $ENV{'PLACK_TEST_EXTERNALSERVER_URI'};
+
+    use_ok('Thruk::OMD::Top::Parser::LinuxTop');
+};
+
+my $data_folder = $0;
+$data_folder =~ s/\/[^\/]*$//mx;
+$data_folder = $data_folder.'/data';
+
+###########################################################
+test_file($data_folder.'/1421945063.debian6.txt', {
             'num'       => '149',
             'load1'     => '3.68',
             'load5'     => '3.34',
@@ -31,7 +44,7 @@ test_file('t/data/1421945063.debian6.txt', {
             'procs'     => { 'other' => { 'cpu' => '103', 'num' => 3, 'mem' => '0.5', 'res' => 0, 'virt' => 0 } },
 });
 
-test_file('t/data/1421945063.ubuntu14-04.txt', {
+test_file($data_folder.'/1421945063.ubuntu14-04.txt', {
             'num'       => '404',
             'load1'     => '0.26',
             'load5'     => '0.35',
@@ -53,7 +66,7 @@ test_file('t/data/1421945063.ubuntu14-04.txt', {
             'procs'     => { 'other' => { 'cpu' => '48.8', 'num' => 3, 'mem' => '6.6', 'res' => 0, 'virt' => 2 } },
 });
 
-test_file('t/data/1421945063.rhel7.txt', {
+test_file($data_folder.'/1421945063.rhel7.txt', {
             'num'       => '216',
             'load1'     => '0.55',
             'load5'     => '1.10',

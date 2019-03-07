@@ -7,6 +7,7 @@ use Carp;
 use JSON::XS;
 use File::Slurp qw/read_file/;
 use IPC::Open3 qw/open3/;
+use Thruk::Utils;
 #use Thruk::Timer qw/timing_breakpoint/;
 
 =head1 NAME
