@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Carp;
-use JSON::XS;
+use Cpanel::JSON::XS;
 use File::Slurp qw/read_file/;
 use IPC::Open3 qw/open3/;
 #use Thruk::Timer qw/timing_breakpoint/;
