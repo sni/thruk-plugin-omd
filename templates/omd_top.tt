@@ -134,3 +134,5 @@ function getTooltipFromSeries(date, series, index, unit, skipEmpty, toFixed) {
 -->
 </script>
 [% END %]
+
+[% PROCESS _footer.tt

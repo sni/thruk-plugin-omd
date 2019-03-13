@@ -554,3 +554,5 @@ function max_or_default(fallback, series) {
 
 -->
 </script>
+
+[% PROCESS _footer.tt
