@@ -35,7 +35,7 @@
           <td valign="top" align="left" class='optBoxItem'>
             <select name='folder'>
               [% FOREACH f = folders %]
-              <option value="[% f.dir %]"[% IF f.dir == folder %] selected[% END %]>[% f.display %]</option>
+              <option value="[% f.dir | html %]"[% IF f.dir == folder %] selected[% END %]>[% f.display %]</option>
               [% END %]
             </select>
           </td>
@@ -135,4 +135,4 @@ function getTooltipFromSeries(date, series, index, unit, skipEmpty, toFixed) {
 </script>
 [% END %]
 
-[% PROCESS _footer.tt
+[% PROCESS _footer.tt %]
