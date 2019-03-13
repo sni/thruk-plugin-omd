@@ -358,7 +358,7 @@ jQuery().ready(function() {
                     x:      item.datapoint[0],
                     x1:     item.datapoint[0],
                     y:      item.datapoint[1],
-                    y1:     item.datapoint[1],
+                    y1:     item.datapoint[1]
                 };
                 croshair_locked = true;
                 jQuery.each(plots, function(name, plot) {
