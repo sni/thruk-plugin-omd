@@ -17,7 +17,7 @@
       <table border="1" cellpadding="0" cellspacing="0" class='linkBox'>
         <tr>
           <td class='linkBox'>
-            <a href='omd.cgi?action=top&folder=[% folder %]'>back to overview</a><br>
+            <a href="omd.cgi?action=top&folder=[% folder | uri %]">back to overview</a><br>
           </td>
         </tr>
       </table>
@@ -379,7 +379,7 @@ jQuery().ready(function() {
                 [% IF c.req.parameters.defined("pid") %]
                 pid  = '&pid='+[% c.req.parameters.pid %];
                 [% END %]
-                window.setTimeout("window_location_replace('omd.cgi?action=top_details&t1="+from+"&t2="+to+"&folder=[% folder %]"+pid+"')", 100);
+                window.setTimeout("window_location_replace('omd.cgi?action=top_details&t1="+from+"&t2="+to+"&folder=[% folder | uri %]"+pid+"')", 100);
                 return(false);
             }
             jQuery.each(plots, function(name, plot) {
@@ -493,11 +493,11 @@ function fetchTopData(delay) {
 function fetchTopDataDo() {
     /* fetch top data */
     jQuery.ajax({
-        url: url_prefix + 'cgi-bin/omd.cgi?action=top_data&time='+Math.floor(updateDetailsTableTimestamp/1000)+"&folder=[% folder %]",
+        url: url_prefix + 'cgi-bin/omd.cgi?action=top_data&time='+Math.floor(updateDetailsTableTimestamp/1000)+"&folder=[% folder | uri %]",
         type: 'POST',
         success: function(data) {
             removeParams['pid'] = true;
-            var uri = 'omd.cgi?action=top_details&folder=[% folder %]&expand=1&time='+Math.floor(updateDetailsTableTimestamp/1000);
+            var uri = 'omd.cgi?action=top_details&folder=[% folder | uri %]&expand=1&time='+Math.floor(updateDetailsTableTimestamp/1000);
             if(data && data.raw) {
                 jQuery('#raw_top').find("tr:gt(0)").remove();
                 jQuery.each(data.raw, function(_, row) {
