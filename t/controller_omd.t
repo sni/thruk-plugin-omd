@@ -8,20 +8,15 @@ BEGIN {
     import TestUtils;
 }
 
-plan skip_all => 'backends required' if(!-s 'thruk_local.conf' and !defined $ENV{'PLACK_TEST_EXTERNALSERVER_URI'});
+plan skip_all => 'internal test' if $ENV{'PLACK_TEST_EXTERNALSERVER_URI'};
+plan skip_all => 'backends required' if !-s 'thruk_local.conf';
 plan tests => 12;
 
 ###########################################################
 # test modules
-if(defined $ENV{'PLACK_TEST_EXTERNALSERVER_URI'}) {
-    unshift @INC, 'plugins/plugins-available/omd/lib';
-}
 
-SKIP: {
-    skip 'external tests', 1 if defined $ENV{'PLACK_TEST_EXTERNALSERVER_URI'};
-
-    use_ok 'Thruk::Controller::omd';
-};
+unshift @INC, 'plugins/plugins-available/omd/lib';
+use_ok 'Thruk::Controller::omd';
 
 ###########################################################
 # test main page
