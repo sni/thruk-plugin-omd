@@ -3,7 +3,7 @@ use warnings;
 use Test::More;
 
 BEGIN {
-    my $tests = 4;
+    my $tests = 5;
     plan tests => $tests;
 }
 
@@ -20,6 +20,11 @@ SKIP: {
 my $data_folder = $0;
 $data_folder =~ s/\/[^\/]*$//mx;
 $data_folder = $data_folder.'/data';
+if($ARGV[0] && -d $ARGV[0]) {
+    $data_folder = $ARGV[0].'/t/data';
+}
+
+ok(-d $data_folder) || BAIL_OUT("cannot test, datafolder error: $data_folder - $!");
 
 ###########################################################
 test_file($data_folder.'/1421945063.debian6.txt', {
