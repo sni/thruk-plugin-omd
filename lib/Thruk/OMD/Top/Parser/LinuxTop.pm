@@ -1,12 +1,11 @@
 package Thruk::OMD::Top::Parser::LinuxTop;
 
-use strict;
 use warnings;
-
+use strict;
 use Carp;
-use Cpanel::JSON::XS;
-use File::Slurp qw/read_file/;
 use IPC::Open3 qw/open3/;
+use POSIX ();
+
 #use Thruk::Timer qw/timing_breakpoint/;
 
 =head1 NAME
@@ -31,7 +30,7 @@ Parses Linux Top data.
 sub new {
     my ( $class, $folder ) = @_;
     my $self = {
-        'folder' => $folder
+        'folder' => $folder,
     };
     bless $self, $class;
     return($self);
@@ -124,8 +123,10 @@ sub top_graph_details {
         my $start = 0;
         for my $file (@files) {
             $file =~ m/\/(\d+)\./mxo;
-            last if $1 > $time;
-            $start++;
+            if(defined $1) {
+                last if $1 > $time;
+                $start++;
+            }
         }
 
         my $file = $files[$start];
@@ -139,19 +140,26 @@ sub top_graph_details {
         while(1) {
             my $file = $files[$x];
             $file =~ m/\/(\d+)\./mxo;
-            my $time = $1;
-            my $out = `LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null`;
-            if($out) {
-                $max = $x;
+            if(defined $1) {
+                $x++;
+                next;
             } else {
-                $min = $x;
-            }
-            $x = $min + int(($max-$min) / 2);
-            if($min == $x || $max == $x) {
-                if($min > 0) { $min--; }
-                $files[$min] =~ m/\/(\d+)\./mxo;
-                $t1 = $1;
-                last;
+                my $time = $1;
+                my $out = `LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null`;
+                if($out) {
+                    $max = $x;
+                } else {
+                    $min = $x;
+                }
+                $x = $min + int(($max-$min) / 2);
+                if($min == $x || $max == $x) {
+                    if($min > 0) { $min--; }
+                    $files[$min] =~ m/\/(\d+)\./mxo;
+                    if($1) {
+                        $t1 = $1;
+                    }
+                    last;
+                }
             }
         }
 
@@ -162,19 +170,26 @@ sub top_graph_details {
         while(1) {
             my $file = $files[$x];
             $file =~ m/\/(\d+)\./mxo;
-            my $time = $1;
-            my $out = `LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null`;
-            if($out) {
-                $min = $x;
+            if(!defined $1) {
+                $x++;
+                next;
             } else {
-                $max = $x;
-            }
-            $x = $min + int(($max-$min) / 2);
-            if($min == $x || $max == $x) {
-                if($max < scalar @files -1) { $max++; }
-                $files[$max] =~ m/\/(\d+)\./mxo;
-                $t2 = $1;
-                last;
+                my $time = $1;
+                my $out = `LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null`;
+                if($out) {
+                    $min = $x;
+                } else {
+                    $max = $x;
+                }
+                $x = $min + int(($max-$min) / 2);
+                if($min == $x || $max == $x) {
+                    if($max < scalar @files -1) { $max++; }
+                    $files[$max] =~ m/\/(\d+)\./mxo;
+                    if(defined $1) {
+                        $t2 = $1;
+                    }
+                    last;
+                }
             }
         }
         $c->stash->{'t1'} = $t1;
@@ -183,12 +198,14 @@ sub top_graph_details {
 
     for my $file (@files) {
         $file =~ m/\/(\d+)\./mxo;
-        my $time = $1;
-        if($time < $t1 || $time > $t2) {
-            next;
+        if(defined $1) {
+            my $time = $1;
+            if($time < $t1 || $time > $t2) {
+                next;
+            }
+            push @file_list, $file;
+            $files_read++;
         }
-        push @file_list, $file;
-        $files_read++;
     }
     my $num = scalar @file_list;
     if($num > 500) {
@@ -307,9 +324,11 @@ sub top_graph_data {
     my $lastfile;
     for my $file (@files) {
         $file =~ m/\/(\d+)\./mxo;
-        my $timestamp = $1;
-        last if $timestamp > $time;
-        $lastfile = $file;
+        if(defined $1) {
+            my $timestamp = $1;
+            last if $timestamp > $time;
+            $lastfile = $file;
+        }
     }
     my $d    = _extract_top_data([$lastfile], 1);
     my $data = $d->{$time};
@@ -327,7 +346,12 @@ sub _extract_top_data {
     close($wtr);
 
     $files->[0] =~ m/\/(\d+)\./mxo;
-    my(@startdate) = localtime($1);
+    my @startdate;
+    if(defined $1) {
+        @startdate = localtime($1);
+    } else {
+        return;
+    }
 
     my $proc_started    = 0;
     my $gearman_started = 0;

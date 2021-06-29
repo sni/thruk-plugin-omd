@@ -1,5 +1,5 @@
-use strict;
 use warnings;
+use strict;
 use Test::More;
 
 BEGIN {
@@ -106,4 +106,7 @@ sub test_file {
 ###########################################################
 # fake menu package
 package Thruk::Utils::Menu;
+use warnings;
+use strict;
+
 sub insert_item {};

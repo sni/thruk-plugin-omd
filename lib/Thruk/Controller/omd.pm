@@ -1,13 +1,13 @@
 package Thruk::Controller::omd;
 
-use strict;
 use warnings;
-
+use strict;
 use Carp;
-use Cpanel::JSON::XS;
-use File::Slurp qw/read_file/;
-use IPC::Open3 qw/open3/;
-use Thruk::Utils;
+
+use Thruk ();
+use Thruk::Backend::Manager ();
+use Thruk::Utils ();
+
 #use Thruk::Timer qw/timing_breakpoint/;
 
 =head1 NAME
