@@ -1,3 +1,7 @@
+TABLE {
+    width: auto !important;
+}
+
 #tooltip {
     position: absolute;
     display: none;
@@ -27,22 +31,6 @@ table.tooltip .date {
     padding-right: 5px;
 }
 
-#detailstable {
-    border-collapse: collapse;
-    border: 1px solid #676767;
-}
-
-#detailstable TH {
-    border: 1px solid #676767;
-    background-color: #EFEEE1;
-    padding: 2px;
-}
-#detailstable TD {
-    border: 1px solid #676767;
-    background-color:#F0F0ED;
-    padding: 2px;
-}
-
 #raw_top TD {
     white-space: nowrap;
     text-align: center;
@@ -56,17 +44,8 @@ table.tooltip .date {
 
 
 /* tables */
-table.tablesorter {
-    background-color: #CDCDCD;
-    margin:0;
-    text-align: left;
-    border-collapse: collapse;
-    border: 2px solid #676767;
-}
 table.tablesorter thead tr th, table.tablesorter tfoot tr th {
-    background-color: #EFEEE1;
     padding: 4px;
-    border: 1px solid #676767;
     padding: 2px;
 }
 table.tablesorter thead tr .header {
@@ -78,15 +57,9 @@ table.tablesorter thead tr .header {
     padding-right: 10px;
 }
 table.tablesorter tbody td {
-    border: 1px solid #676767;
-    color: #3D3D3D;
     padding: 0 1px;
     line-height: 14px;
-    background-color: #F0F0ED;
     vertical-align: top;
-}
-table.tablesorter tbody tr.odd td {
-    background-color:#F0F0F6;
 }
 table.tablesorter thead tr .headerSortUp {
     background-image: url(asc.gif);
