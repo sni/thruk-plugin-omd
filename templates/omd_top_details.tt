@@ -14,7 +14,7 @@
 <div class="flexrow justify-between mb-5">
   <div>
       <div class="w-fit">
-      <a class="button" href='omd.cgi?action=top&folder=[% folder | uri %]'>back to overview</a>
+      <a class="button" href="omd.cgi?action=top&folder=[% folder | uri %]">back to overview</a>
       </div>
   </div>
   <div>
