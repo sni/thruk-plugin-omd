@@ -6,6 +6,8 @@ use Carp;
 use IPC::Open3 qw/open3/;
 use POSIX ();
 
+use Thruk::Utils::IO ();
+
 #use Thruk::Timer qw/timing_breakpoint/;
 
 =head1 NAME
@@ -70,7 +72,7 @@ sub top_graph {
     # zgrep to 30 files each to reduce the number of forks
     while( my @chunk = splice( @files_striped, 0, 30 ) ) {
         my $joined = join(' ', @chunk);
-        my $out = `LC_ALL=C zgrep -H -F -m 1 'load average:' $joined 2>/dev/null`;
+        my($rc, $out) = Thruk::Utils::IO::cmd("LC_ALL=C zgrep -H -F -m 1 'load average:' $joined 2>/dev/null");
         #&timing_breakpoint('zgrep done');
         if(my @matches = $out =~ m/(\d+)\.log.*?:\s*top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/gmxo) {
             while( my @m = splice( @matches, 0, 7 ) ) {
@@ -130,7 +132,7 @@ sub top_graph_details {
         }
 
         my $file = $files[$start];
-        my $out = `LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null`;
+        my($rc, $out) = Thruk::Utils::IO::cmd("LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null");
         if(!$out) {
             $start--;
         }
@@ -145,7 +147,7 @@ sub top_graph_details {
                 next;
             } else {
                 my $time = $1;
-                my $out = `LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null`;
+                my($rc, $out) = Thruk::Utils::IO::cmd("LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null");
                 if($out) {
                     $max = $x;
                 } else {
@@ -175,7 +177,7 @@ sub top_graph_details {
                 next;
             } else {
                 my $time = $1;
-                my $out = `LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null`;
+                my($rc, $out) = Thruk::Utils::IO::cmd("LC_ALL=C zgrep -H -F -m 1 '$pid ' $file 2>/dev/null");
                 if($out) {
                     $min = $x;
                 } else {
@@ -343,7 +345,7 @@ sub _extract_top_data {
 
     my($pid, $wtr, $rdr, @lines);
     $pid = open3($wtr, $rdr, $rdr, 'zcat', @{$files});
-    close($wtr);
+    CORE::close($wtr);
 
     $files->[0] =~ m/\/(\d+)\./mxo;
     my @startdate;
