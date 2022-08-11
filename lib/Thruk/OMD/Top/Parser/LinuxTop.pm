@@ -439,8 +439,11 @@ sub _extract_top_data {
                 $cur->{'buffers'}  = &_normalize_mem($5, $factor);
             }
             # Memory rhel7 format
-            elsif($line =~ m/^(KiB|)\s*Mem\s*:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*buf/mxo) {
-                my $factor = $1 eq 'KiB' ? 1024 : 1;
+            elsif($line =~ m/^(MiB|KiB|)\s*Mem\s*:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*buf/mxo) {
+                my $unit = $1;
+                my $factor = 1;
+                $factor = 1024      if $unit eq 'KiB';
+                $factor = 1024*1024 if $unit eq 'MiB';
                 $cur->{'mem'}      = &_normalize_mem($2, $factor);
                 $cur->{'mem_used'} = &_normalize_mem($4, $factor);
                 $cur->{'buffers'}  = &_normalize_mem($5, $factor);
@@ -453,8 +456,11 @@ sub _extract_top_data {
                 $cur->{'cached'}    = &_normalize_mem($6, $factor);
             }
             # Swap / Cached rhel7 format
-            elsif($line =~ m/^(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*used(,|\.)/mxo) {
-                my $factor = $1 eq 'KiB' ? 1024 : 1;
+            elsif($line =~ m/^(MiB|KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*used(,|\.)/mxo) {
+                my $unit = $1;
+                my $factor = 1;
+                $factor = 1024      if $unit eq 'KiB';
+                $factor = 1024*1024 if $unit eq 'MiB';
                 $cur->{'swap'}      = &_normalize_mem($2, $factor);
                 $cur->{'swap_used'} = &_normalize_mem($4, $factor);
             }
@@ -478,12 +484,12 @@ sub _extract_top_data {
             $procs->{num}  += 1;
             $procs->{cpu}  += $proc[8];
             if($proc[4] =~ m/^[\d\.]+$/mxo) {
-                $procs->{virt} += int($proc[4]/1024/1024); # inline is much faster than million function calls
+                $procs->{virt} += int($proc[4]/1024); # inline is much faster than million function calls
             } else {
                 $procs->{virt} += &_normalize_mem($proc[4]);
             }
             if($proc[5] =~ m/^[\d\.]+$/mxo) {
-                $procs->{res} += int($proc[5]/1024/1024); # inline is much faster than million function calls
+                $procs->{res} += int($proc[5]/1024); # inline is much faster than million function calls
             } else {
                 $procs->{res} += &_normalize_mem($proc[5]);
             }

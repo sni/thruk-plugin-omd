@@ -3,7 +3,7 @@ use strict;
 use Test::More;
 
 BEGIN {
-    my $tests = 5;
+    my $tests = 6;
     plan tests => $tests;
 }
 
@@ -46,7 +46,7 @@ test_file($data_folder.'/1421945063.debian6.txt', {
             'cached'    => 486,
             'swap'      => 2294,
             'swap_used' => 85,
-            'procs'     => { 'other' => { 'cpu' => '103', 'num' => 3, 'mem' => '0.5', 'res' => 0, 'virt' => 0 } },
+            'procs'     => { 'other' => { 'cpu' => '103', 'num' => 3, 'mem' => '0.5', 'res' => 3, 'virt' => 44 } },
 });
 
 test_file($data_folder.'/1421945063.ubuntu14-04.txt', {
@@ -68,7 +68,7 @@ test_file($data_folder.'/1421945063.ubuntu14-04.txt', {
             'cached'    => 555,
             'swap'      => 19338,
             'swap_used' => 784,
-            'procs'     => { 'other' => { 'cpu' => '48.8', 'num' => 3, 'mem' => '6.6', 'res' => 0, 'virt' => 2 } },
+            'procs'     => { 'other' => { 'cpu' => '48.8', 'num' => 3, 'mem' => '6.6', 'res' => 527, 'virt' => 2840 } },
 });
 
 test_file($data_folder.'/1421945063.rhel7.txt', {
@@ -89,7 +89,28 @@ test_file($data_folder.'/1421945063.rhel7.txt', {
             'buffers'   => 1984,
             'swap'      => 2047,
             'swap_used' => 596,
-            'procs'     => { 'other' => { 'cpu' => '156', 'num' => 9, 'mem' => '17.1', 'res' => 1016, 'virt' => 1 } },
+            'procs'     => { 'other' => { 'cpu' => '156', 'num' => 9, 'mem' => '17.1', 'res' => 1336, 'virt' => 3654 } },
+});
+
+test_file($data_folder.'/1660200901.debian11.txt', {
+            'num'       => '347',
+            'load1'     => '14.34',
+            'load5'     => '6.41',
+            'load15'    => '2.56',
+            'cpu_us'    => '57.6',
+            'cpu_sy'    => '8.6',
+            'cpu_ni'    => '0.0',
+            'cpu_id'    => '8.6',
+            'cpu_wa'    => '25.2',
+            'cpu_hi'    => '0.0',
+            'cpu_si'    => '0.0',
+            'cpu_st'    => '0.0',
+            'mem_used'  => 10501,
+            'mem'       => 64307,
+            'buffers'   => 28536,
+            'swap'      => 77080,
+            'swap_used' => 471,
+            'procs'     => { 'other' => { 'cpu' => '7.3', 'num' => 134, 'mem' => '8.1', 'res' => 34, 'virt' => 253 } },
 });
 
 ###########################################################
