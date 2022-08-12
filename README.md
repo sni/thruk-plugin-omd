@@ -3,6 +3,7 @@
 This plugin saves top data every minute and renders nice graphs to drill down
 performance problems on your monitoring host.
 
+![Thruk OMD Plugin](preview.png "Thruk OMD Plugin")
 
 ## Installation
 
