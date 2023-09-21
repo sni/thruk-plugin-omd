@@ -11,15 +11,11 @@
 [% USE date %]
 
 <div class="flexrow justify-between mb-5">
-  <div>
-    <div class="w-fit">
-      <a class="button" href="omd.cgi">back to overview</a>
-    </div>
-  </div>
+  <div class="w-44"></div>
   <div>
     <h1>Top Reporting Overview</h1>
   </div>
-  <div>
+  <div class="w-44">
     [% IF folders.size > 1 %]
       <form method="GET" action="omd.cgi">
         <div class="card">

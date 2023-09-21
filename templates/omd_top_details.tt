@@ -12,16 +12,14 @@
 [% USE date %]
 
 <div class="flexrow justify-between mb-5">
-  <div>
-      <div class="w-fit">
-      <a class="button" href="omd.cgi?action=top&folder=[% folder | uri %]">back to overview</a>
-      </div>
+  <div class="w-44">
+    <a class="button w-32" href="omd.cgi?action=top&folder=[% folder | uri %]">back to overview</a>
   </div>
   <div>
       <h1>Top Reporting Overview</h1>
       [% IF c.req.parameters.defined("pid") %]<h4>PID: [% c.req.parameters.pid %] / [% format_date(t1, datetime_format) %] - [% format_date(t2, datetime_format) %]</h4>[% END %]
   </div>
-  <div></div>
+  <div class="w-44"></div>
 </div>
 
 <div class="flexrow flex-nowrap">

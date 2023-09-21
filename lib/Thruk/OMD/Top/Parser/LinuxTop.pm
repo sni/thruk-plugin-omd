@@ -8,8 +8,6 @@ use POSIX ();
 
 use Thruk::Utils::IO ();
 
-#use Thruk::Timer qw/timing_breakpoint/;
-
 =head1 NAME
 
 Thruk::OMD::Top::Parser::LinuxTop - Parser for Linux Top Data
@@ -47,45 +45,30 @@ sub new {
 =cut
 sub top_graph {
     my ( $self, $c ) = @_;
-    #&timing_breakpoint('top_graph()');
+
+    $c->stats->profile(begin => "top_graph");
+
     $c->stash->{template} = 'omd_top.tt';
     my $load_series = [
         { label => "load 1",  data =>  [] },
         { label => "load 5",  data =>  [] },
         { label => "load 15", data =>  [] },
     ];
-    my @files = sort glob($self->{'folder'}.'/*.log '.$self->{'folder'}.'/*.gz');
-    my $num = 0;
-    my $max = scalar @files;
-    my @files_striped;
-    if($max < 300) {
-        @files_striped = @files;
-    } else {
-        for my $file (@files) {
-            $num++;
-            # use only the first, the last and every 30th file to speed up initial graph
-            next if($num != 1 and $num != $max and $num%30 != 0);
-            push @files_striped, $file;
+
+    my $index = $self->_update_index($c);
+
+    for my $line (@{$index}) {
+        if(my @m = $line =~ m/(\d+)\.log.*?:\s*top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/gmxo) {
+            my($time,$hour,$min,$sec,$l1,$l5,$l15) = (@m);
+            $time = (($time - $time%60) + $sec)*1000;
+            push @{$load_series->[0]->{'data'}}, [$time, $l1];
+            push @{$load_series->[1]->{'data'}}, [$time, $l5];
+            push @{$load_series->[2]->{'data'}}, [$time, $l15];
         }
     }
-    #&timing_breakpoint('files selected');
-    # zgrep to 30 files each to reduce the number of forks
-    while( my @chunk = splice( @files_striped, 0, 30 ) ) {
-        my $joined = join(' ', @chunk);
-        my($rc, $out) = Thruk::Utils::IO::cmd("LC_ALL=C zgrep -H -F -m 1 'load average:' $joined 2>/dev/null");
-        #&timing_breakpoint('zgrep done');
-        if(my @matches = $out =~ m/(\d+)\.log.*?:\s*top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/gmxo) {
-            while( my @m = splice( @matches, 0, 7 ) ) {
-                my($time,$hour,$min,$sec,$l1,$l5,$l15) = (@m);
-                $time = (($time - $time%60) + $sec)*1000;
-                push @{$load_series->[0]->{'data'}}, [$time, $l1];
-                push @{$load_series->[1]->{'data'}}, [$time, $l5];
-                push @{$load_series->[2]->{'data'}}, [$time, $l15];
-            }
-        }
-    }
-    #&timing_breakpoint('top_graph() done');
     $c->stash->{load_series} = $load_series;
+
+    $c->stats->profile(end => "top_graph");
     return;
 }
 
@@ -98,7 +81,8 @@ sub top_graph {
 =cut
 sub top_graph_details {
     my ( $self, $c ) = @_;
-    #&timing_breakpoint('top_graph_details()');
+    $c->stats->profile(begin => "top_graph_details");
+
     $c->stash->{template} = 'omd_top_details.tt';
     my @files = sort glob($self->{'folder'}.'/*.log '.$self->{'folder'}.'/*.gz');
 
@@ -224,11 +208,9 @@ sub top_graph_details {
         @file_list = @newfiles;
     }
 
-    #&timing_breakpoint('files selected');
     # now read all zip files at once
     my $proc_found = {};
-    my $data       = _extract_top_data(\@file_list, undef, $pattern, $proc_found, $truncated, $pid);
-    #&timing_breakpoint('data extracted');
+    my $data       = _extract_top_data($c, \@file_list, undef, $pattern, $proc_found, $truncated, $pid);
 
     # create series to draw
     my $mem_series = [
@@ -310,7 +292,8 @@ sub top_graph_details {
     $c->stash->{proc_cpu_series} = $proc_cpu_series;
     $c->stash->{proc_mem_series} = $proc_mem_series;
     $c->stash->{gearman_series}  = $gearman_series;
-    #&timing_breakpoint('top_graph_details() done');
+
+    $c->stats->profile(end => "top_graph_details");
     return;
 }
 
@@ -332,16 +315,20 @@ sub top_graph_data {
             $lastfile = $file;
         }
     }
-    my $d    = _extract_top_data([$lastfile], 1);
-    my $data = $d->{$time};
-    $data->{'file'}     = $lastfile;
+    $lastfile = Thruk::Base::basename($lastfile);
+    my $d    = _extract_top_data($c, [$self->{'folder'}."/".$lastfile], 1);
+    my @times = sort keys %{$d};
+    my $data = $d->{$time} // $d->{$times[0]};
+    $data->{'file'} = $lastfile;
     if(defined $ENV{'OMD_ROOT'}) { my $root = $ENV{'OMD_ROOT'}; $data->{'file'} =~ s|$root||gmx; }
     return $c->render(json => $data);
 }
 
 ##########################################################
 sub _extract_top_data {
-    my($files, $with_raw, $pattern, $proc_found, $first_one_only, $filter) = @_;
+    my($c, $files, $with_raw, $pattern, $proc_found, $first_one_only, $filter) = @_;
+
+    $c->stats->profile(begin => "_extract_top_data");
 
     my($pid, $wtr, $rdr, @lines);
     $pid = open3($wtr, $rdr, $rdr, 'zcat', @{$files});
@@ -363,7 +350,7 @@ sub _extract_top_data {
     my $last_hour = $startdate[2];
     my $last_min  = -1;
     while(my $line = <$rdr>) {
-        $line =~ s/^\s+//mxo; # way faster than calling _trim millions of times
+        $line =~ s/^\s+//mxo; # way faster than calling trim millions of times
         $line =~ s/\s+$//mxo;
 
         if($line =~ m/^top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/mxo) {
@@ -501,6 +488,8 @@ sub _extract_top_data {
         $cur->{gearman} = $gearman;
     }
     if($cur) { $result->{$cur->{time}} = $cur; }
+
+    $c->stats->profile(end => "_extract_top_data");
     return($result);
 }
 
@@ -534,8 +523,8 @@ sub _get_pattern {
     if($c && $c->config->{'omd_top'}) {
         for my $regex (@{$c->config->{'omd_top'}}) {
             my($k,$p) = split(/\s*=\s*/mx, $regex, 2);
-            &_trim($p);
-            &_trim($k);
+            &Thruk::Base::trim_whitespace($p);
+            &Thruk::Base::trim_whitespace($k);
             push @{$pattern}, [$k,$p];
         }
     }
@@ -543,17 +532,74 @@ sub _get_pattern {
 }
 
 ##########################################################
-sub _trim {
-    $_[0] =~ s/^\s+//mxo;
-    $_[0] =~ s/\s+$//mxo;
-    return;
+sub _update_index {
+    my($self, $c) = @_;
+
+    $c->stats->profile(begin => "_update_index");
+
+    # read current index
+    my $folder = $self->{'folder'};
+    my $indexfile = $folder.'/.index';
+    my @index     = Thruk::Utils::IO::saferead_as_list($indexfile);
+    my $indexfiles = {};
+    for my $row (@index) {
+        my($file, undef) = split(/:/mx, $row, 2);
+        $file = Thruk::Base::basename($file);
+        $indexfiles->{$file} = $row;
+    }
+
+    # get existing and missing files
+    my $existing = {};
+    my $missing  = {};
+    my @files = sort glob($folder.'/*.gz');
+    for my $path (@files) {
+        my $file = Thruk::Base::basename($path);
+        $existing->{$file} = $path;
+        $missing->{$file} = $path unless $indexfiles->{$file};
+    }
+
+    # remove obsolete entries
+    my $changed = 0;
+    for my $ind (sort keys %{$indexfiles}) {
+        if(!defined $existing->{$ind}) {
+            delete $indexfiles->{$ind};
+            $changed++;
+        }
+    }
+    if($changed > 0) {
+        # write out cleaned up index
+        my @lines;
+        for my $f (sort keys %{$indexfiles}) {
+            push @lines, $indexfiles->{$f};
+        }
+        Thruk::Utils::IO::write($indexfile, join("\n", @lines)."\n");
+    }
+
+    my @files_striped = sort keys %{$missing};
+    if(scalar @files_striped > 0) {
+        # zgrep to 30 files each to reduce the number of forks
+        while( my @chunk = splice( @files_striped, 0, 30 ) ) {
+            my $joined = join(' ', @chunk);
+            my($rc, $out) = Thruk::Utils::IO::cmd("cd $folder && LC_ALL=C zgrep -H -F -m 1 'load average:' $joined 2>/dev/null >> $indexfile");
+        }
+        $changed++;
+    }
+
+    if($changed > 0) {
+        @index = Thruk::Utils::IO::saferead_as_list($indexfile);
+    }
+
+    $c->stats->profile(end => "_update_index");
+
+    return \@index;
 }
+
 
 ##########################################################
 
 =head1 AUTHOR
 
-Sven Nierlein, 2009-2014, <sven@nierlein.org>
+Sven Nierlein, 2009-now, <sven@nierlein.de>
 
 =head1 LICENSE
 
