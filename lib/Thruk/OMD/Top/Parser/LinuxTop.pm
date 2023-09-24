@@ -329,7 +329,7 @@ sub top_graph_data {
 sub _extract_top_data {
     my($c, $files, $with_raw, $pattern, $proc_found, $first_one_only, $filter) = @_;
 
-    $c->stats->profile(begin => "_extract_top_data");
+    $c->stats->profile(begin => "_extract_top_data") if $c;
 
     my($pid, $wtr, $rdr, @lines);
     $pid = open3($wtr, $rdr, $rdr, 'zcat', @{$files});
@@ -490,7 +490,7 @@ sub _extract_top_data {
     }
     if($cur) { $result->{$cur->{time}} = $cur; }
 
-    $c->stats->profile(end => "_extract_top_data");
+    $c->stats->profile(end => "_extract_top_data") if $c;
     return($result);
 }
 

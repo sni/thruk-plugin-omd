@@ -117,7 +117,7 @@ test_file($data_folder.'/1660200901.debian11.txt', {
 sub test_file {
     my($file, $expected) = @_;
     `cat $file | gzip > $file.gz`;
-    my $d = Thruk::OMD::Top::Parser::LinuxTop::_extract_top_data([$file.'.gz']);
+    my $d = Thruk::OMD::Top::Parser::LinuxTop::_extract_top_data(undef, [$file.'.gz']);
     unlink($file.'.gz');
     my $data = $d->{(keys %{$d})[0]};
     delete $data->{'time'};
