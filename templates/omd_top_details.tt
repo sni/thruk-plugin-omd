@@ -6,7 +6,9 @@
                       "plugins/${plugin}/vendor/jquery.flot.crosshair.js",
                       "plugins/${plugin}/vendor/jquery.tablesorter.min.js",
                     ],
-    css          => [ "plugins/${plugin}/style.css", ],
+    css          => [ "plugins/${plugin}/style.css",
+                      "plugins/${plugin}/vendor/theme.default.min.css",
+                    ],
 %]
 [% PROCESS _message.tt %]
 [% USE date %]
@@ -25,8 +27,9 @@
 <div class="flexrow flex-nowrap">
   <div class="flexcol">
     <div class="card">
-      <div class="head">
+      <div class="head justify-between">
         <h3>Performance Graphs</h3>
+        <div class="textHINTsoft">click on graph to show process list</div>
       </div>
       <div class="body">
         <div id='tooltip'></div>
@@ -413,7 +416,7 @@ jQuery().ready(function() {
             });
         });
     });
-   jQuery('#raw_top').tablesorter();
+   jQuery('#raw_top').tablesorter({ sortList: [[8,1]] }); // sort by cpu (column 8) in descending order (1)
 });
 
 function zoomOut(plot) {
@@ -505,7 +508,11 @@ function fetchTopDataDo() {
                     jQuery.each(row, function(i, cell) {
                         if(i == 0) {
                             newRow += '<td><a href="'+uri+'&pid='+cell+'">'+cell+'<\/a><\/td>';
-                        } else {
+                        } else if(i == 4) {
+                            newRow += '<td>'+row[12]+'m<\/td>';
+                        } else if(i == 5) {
+                            newRow += '<td>'+row[13]+'m<\/td>';
+                        } else if(i <= 11) {
                             newRow += '<td>'+cell+'<\/td>';
                         }
                     });

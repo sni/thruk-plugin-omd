@@ -350,140 +350,155 @@ sub _extract_top_data {
     my($cur, $gearman);
     my $last_hour = $startdate[2];
     my $last_min  = -1;
-    while(my $line = <$rdr>) {
-        $line =~ s/^\s+//mxo; # way faster than calling trim millions of times
-        $line =~ s/\s+$//mxo;
+    my $last_line;
+    eval {
+        while(my $line = <$rdr>) {
+            $last_line = $line;
+            $line =~ s/^\s+//mxo; # way faster than calling trim millions of times
+            $line =~ s/\s+$//mxo;
 
-        if($line =~ m/^top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/mxo) {
-            if($cur) { $result->{$cur->{time}} = $cur; }
-            $cur = { procs => {} };
-            $cur->{'raw'} = [] if $with_raw;
-            $cur->{'load1'}  = $4;
-            $cur->{'load5'}  = $5;
-            $cur->{'load15'} = $6;
-            $skip_this_one   = 0;
-            my($hour,$min,$sec) = ($1,$2,$3);
-            if($last_hour == 23 and $hour != 23) {
-                @startdate = localtime(POSIX::mktime(59, 59, 23, $startdate[3], $startdate[4], $startdate[5], $startdate[6], $startdate[7])+7500);
-            }
-            $cur->{'time'}   = POSIX::mktime($sec, $min, $hour, $startdate[3], $startdate[4], $startdate[5], $startdate[6], $startdate[7]);
-            if($first_one_only) {
-                if($last_min == $min) {
-                    $skip_this_one = 1;
-                    $cur           = undef;
-                    next;
+            if($line =~ m/^top\s+\-\s+(\d+):(\d+):(\d+)\s+up.*?average:\s*([\.\d]+),\s*([\.\d]+),\s*([\.\d]+)/mxo) {
+                if($cur) { $result->{$cur->{time}} = $cur; }
+                $cur = { procs => {} };
+                $cur->{'raw'} = [] if $with_raw;
+                $cur->{'load1'}  = $4;
+                $cur->{'load5'}  = $5;
+                $cur->{'load15'} = $6;
+                $skip_this_one   = 0;
+                my($hour,$min,$sec) = ($1,$2,$3);
+                if($last_hour == 23 and $hour != 23) {
+                    @startdate = localtime(POSIX::mktime(59, 59, 23, $startdate[3], $startdate[4], $startdate[5], $startdate[6], $startdate[7])+7500);
                 }
-            }
-            $last_hour       = $hour;
-            $last_min        = $min;
-            $proc_started    = 0;
-            $gearman_started = 0;
-            if($gearman) {
-                $cur->{gearman} = $gearman;
-                $gearman        = undef;
-            }
-            next;
-        }
-
-        if($line =~ m/^Queue\ Name/mxo) {
-            $gearman_started = 1;
-            $gearman         = {};
-            next;
-        }
-
-        if($gearman_started) {
-            if($line =~ m/^(\w+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)/mxo) {
-                $gearman->{$1} = { worker => 0+$2, waiting => 0+$3, running => 0+$4 };
-            }
-            next;
-        }
-
-        next if $skip_this_one;
-
-        if(!$proc_started) {
-            if($line =~ m/^PID/mxo) {
-                $proc_started    = 1;
+                $cur->{'time'}   = POSIX::mktime($sec, $min, $hour, $startdate[3], $startdate[4], $startdate[5], $startdate[6], $startdate[7]);
+                if($first_one_only) {
+                    if($last_min == $min) {
+                        $skip_this_one = 1;
+                        $cur           = undef;
+                        next;
+                    }
+                }
+                $last_hour       = $hour;
+                $last_min        = $min;
+                $proc_started    = 0;
                 $gearman_started = 0;
-            }
-            elsif($line =~ m/^Tasks:\s*(\d+)\s*total,/mxo) {
-                $cur->{'num'} = $1;
-            }
-            # CPU %
-            elsif($line =~ m/^%?Cpu\(s\):\s*([\.\d]+)[%\s]*us,\s*([\.\d]+)[%\s]*sy,\s*([\.\d]+)[%\s]*ni,\s*([\.\d]+)[%\s]*id,\s*([\.\d]+)[%\s]*wa,\s*([\.\d]+)[%\s]*hi,\s*([\.\d]+)[%\s]*si,\s*([\.\d]+)[%\s]*st/mxo) {
-                $cur->{'cpu_us'} = $1;
-                $cur->{'cpu_sy'} = $2;
-                $cur->{'cpu_ni'} = $3;
-                $cur->{'cpu_id'} = $4;
-                $cur->{'cpu_wa'} = $5;
-                $cur->{'cpu_hi'} = $6;
-                $cur->{'cpu_si'} = $7;
-                $cur->{'cpu_st'} = $8;
-            }
-            # Memory
-            elsif($line =~ m/^(KiB|)\s*Mem:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*buffers/mxo) {
-                my $factor = $1 eq 'KiB' ? 1024 : 1;
-                $cur->{'mem'}      = &_normalize_mem($2, $factor);
-                $cur->{'mem_used'} = &_normalize_mem($3, $factor);
-                $cur->{'buffers'}  = &_normalize_mem($5, $factor);
-            }
-            # Memory rhel7 format
-            elsif($line =~ m/^(MiB|KiB|)\s*Mem\s*:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*buf/mxo) {
-                my $unit = $1;
-                my $factor = 1;
-                $factor = 1024      if $unit eq 'KiB';
-                $factor = 1024*1024 if $unit eq 'MiB';
-                $cur->{'mem'}      = &_normalize_mem($2, $factor);
-                $cur->{'mem_used'} = &_normalize_mem($4, $factor);
-                $cur->{'buffers'}  = &_normalize_mem($5, $factor);
-            }
-            # Swap / Cached
-            elsif($line =~ m/^(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free(,|\.)\s*([\.\w]+)\s*cached/mxo) {
-                my $factor = $1 eq 'KiB' ? 1024 : 1;
-                $cur->{'swap'}      = &_normalize_mem($2, $factor);
-                $cur->{'swap_used'} = &_normalize_mem($3, $factor);
-                $cur->{'cached'}    = &_normalize_mem($6, $factor);
-            }
-            # Swap / Cached rhel7 format
-            elsif($line =~ m/^(MiB|KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*used(,|\.)/mxo) {
-                my $unit = $1;
-                my $factor = 1;
-                $factor = 1024      if $unit eq 'KiB';
-                $factor = 1024*1024 if $unit eq 'MiB';
-                $cur->{'swap'}      = &_normalize_mem($2, $factor);
-                $cur->{'swap_used'} = &_normalize_mem($4, $factor);
-            }
-        } else {
-            #    0      1     2      3      4      5     6      7       8     9     10     11
-            #my($pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd) = ...
-            my @proc = split(/\s+/mxo, $line, 12);
-            next unless $proc[11];
-            next if $proc[0] eq 'PID';
-            next if $filter && $filter != $proc[0];
-            push @{$cur->{'raw'}}, \@proc if $with_raw;
-            my $key = 'other';
-            for my $p (@{$pattern}) {
-                if($line =~ m|$p->[0]|mx) {
-                    $key = $p->[1];
-                    last;
+                if($gearman) {
+                    $cur->{gearman} = $gearman;
+                    $gearman        = undef;
                 }
+                next;
             }
-            $cur->{procs}->{$key} = {} unless defined $cur->{procs}->{$key};
-            my $procs = $cur->{procs}->{$key};
-            $procs->{num}  += 1;
-            $procs->{cpu}  += $proc[8];
-            if($proc[4] =~ m/^[\d\.]+$/mxo) {
-                $procs->{virt} += int($proc[4]/1024); # inline is much faster than million function calls
+
+            if($line =~ m/^Queue\ Name/mxo) {
+                $gearman_started = 1;
+                $gearman         = {};
+                next;
+            }
+
+            if($gearman_started) {
+                if($line =~ m/^(\w+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)/mxo) {
+                    $gearman->{$1} = { worker => 0+$2, waiting => 0+$3, running => 0+$4 };
+                }
+                next;
+            }
+
+            next if $skip_this_one;
+
+            if(!$proc_started) {
+                if($line =~ m/^PID/mxo) {
+                    $proc_started    = 1;
+                    $gearman_started = 0;
+                }
+                elsif($line =~ m/^Tasks:\s*(\d+)\s*total,/mxo) {
+                    $cur->{'num'} = $1;
+                }
+                # CPU %
+                elsif($line =~ m/^%?Cpu\(s\):\s*([\.\d]+)[%\s]*us,\s*([\.\d]+)[%\s]*sy,\s*([\.\d]+)[%\s]*ni,\s*([\.\d]+)[%\s]*id,\s*([\.\d]+)[%\s]*wa,\s*([\.\d]+)[%\s]*hi,\s*([\.\d]+)[%\s]*si,\s*([\.\d]+)[%\s]*st/mxo) {
+                    $cur->{'cpu_us'} = $1;
+                    $cur->{'cpu_sy'} = $2;
+                    $cur->{'cpu_ni'} = $3;
+                    $cur->{'cpu_id'} = $4;
+                    $cur->{'cpu_wa'} = $5;
+                    $cur->{'cpu_hi'} = $6;
+                    $cur->{'cpu_si'} = $7;
+                    $cur->{'cpu_st'} = $8;
+                }
+                # Memory
+                elsif($line =~ m/^(KiB|)\s*Mem:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*buffers/mxo) {
+                    my $factor = $1 eq 'KiB' ? 1024 : 1;
+                    $cur->{'mem'}      = &_normalize_mem($2, $factor);
+                    $cur->{'mem_used'} = &_normalize_mem($3, $factor);
+                    $cur->{'buffers'}  = &_normalize_mem($5, $factor);
+                }
+                # Memory rhel7 format
+                elsif($line =~ m/^(MiB|KiB|)\s*Mem\s*:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*buf/mxo) {
+                    my $unit = $1;
+                    my $factor = 1;
+                    $factor = 1024      if $unit eq 'KiB';
+                    $factor = 1024*1024 if $unit eq 'MiB';
+                    $cur->{'mem'}      = &_normalize_mem($2, $factor);
+                    $cur->{'mem_used'} = &_normalize_mem($4, $factor);
+                    $cur->{'buffers'}  = &_normalize_mem($5, $factor);
+                }
+                # Swap / Cached
+                elsif($line =~ m/^(KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*used,\s*([\.\w]+)\s*free(,|\.)\s*([\.\w]+)\s*cached/mxo) {
+                    my $factor = $1 eq 'KiB' ? 1024 : 1;
+                    $cur->{'swap'}      = &_normalize_mem($2, $factor);
+                    $cur->{'swap_used'} = &_normalize_mem($3, $factor);
+                    $cur->{'cached'}    = &_normalize_mem($6, $factor);
+                }
+                # Swap / Cached rhel7 format
+                elsif($line =~ m/^(MiB|KiB|)\s*Swap:\s*([\.\w]+)\s*total,\s*([\.\w]+)\s*free,\s*([\.\w]+)\s*used(,|\.)/mxo) {
+                    my $unit = $1;
+                    my $factor = 1;
+                    $factor = 1024      if $unit eq 'KiB';
+                    $factor = 1024*1024 if $unit eq 'MiB';
+                    $cur->{'swap'}      = &_normalize_mem($2, $factor);
+                    $cur->{'swap_used'} = &_normalize_mem($4, $factor);
+                }
             } else {
-                $procs->{virt} += &_normalize_mem($proc[4]);
+                #    0      1     2      3      4      5     6      7       8     9     10     11
+                #my($pid, $user, $prio, $nice, $virt, $res, $shr, $status, $cpu, $mem, $time, $cmd) = ...
+                my @proc = split(/\s+/mxo, $line, 12);
+                next unless $proc[11];
+                next if $proc[0] eq 'PID';
+                next if $filter && $filter != $proc[0];
+                next if $proc[0] !~ m/^\d+/mx;
+                my $key = 'other';
+                for my $p (@{$pattern}) {
+                    if($line =~ m|$p->[0]|mx) {
+                        $key = $p->[1];
+                        last;
+                    }
+                }
+                $cur->{procs}->{$key} = {} unless defined $cur->{procs}->{$key};
+                my $procs = $cur->{procs}->{$key};
+                $procs->{num}  += 1;
+                $procs->{cpu}  += $proc[8];
+                my $virt;
+                if($proc[4] =~ m/^[\d\.]+$/mxo) {
+                    $virt += int($proc[4]/1024); # inline is much faster than million function calls
+                } else {
+                    $virt += &_normalize_mem($proc[4]);
+                }
+                $procs->{virt} += $virt;
+                my $res;
+                if($proc[5] =~ m/^[\d\.]+$/mxo) {
+                    $res += int($proc[5]/1024); # inline is much faster than million function calls
+                } else {
+                    $res += &_normalize_mem($proc[5]);
+                }
+                $procs->{res} += $res;
+                $procs->{mem} += $proc[9]; # in percent
+                if($with_raw) {
+                    push(@proc, $virt, $res);
+                    push @{$cur->{'raw'}}, \@proc;
+                }
+                $proc_found->{$key} = 1;
             }
-            if($proc[5] =~ m/^[\d\.]+$/mxo) {
-                $procs->{res} += int($proc[5]/1024); # inline is much faster than million function calls
-            } else {
-                $procs->{res} += &_normalize_mem($proc[5]);
-            }
-            $procs->{mem}  += $proc[9];
-            $proc_found->{$key} = 1;
         }
+    };
+    if($@) {
+        die("error around timestamp ".($cur ? $cur->{time} : 'unknown')." in line: ".$last_line."\n".$@);
     }
     if($gearman && $cur) {
         $cur->{gearman} = $gearman;
@@ -511,6 +526,7 @@ sub _normalize_mem {
     elsif($value !~ m/^[\d\.]*$/mxo) {
         confess("could not parse top data: $value\n");
     } else {
+        # default is bytes
         $value = $value/1024/1024;
     }
     $value = $value * $factor if defined $factor;
